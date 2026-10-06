@@ -182,8 +182,10 @@ def main() -> int:
               "pairs": {}, "failed": []}
     for pair in (p.lower() for p in a.pairs):
         log(f"> {pair.upper()}")
-        got = [download_year(pair, yr, a.tf, a.price, force=(yr == y))
-               for yr in range(a.start, a.end + 1)]
+        got = []
+        for yr in range(a.start, a.end + 1):
+            got.append(download_year(pair, yr, a.tf, a.price, force=(yr == y)))
+            time.sleep(2 + (yr % 3))        # pace requests (avoid Dukascopy 429)
         df = build_frame(pair, a.tf, a.price)
         if df.empty or not any(got):
             report["failed"].append(pair.upper())
@@ -200,6 +202,7 @@ def main() -> int:
                 report["failed"].append(pair.upper())
         report["pairs"][pair.upper()] = q
         log(f"  {q}")
+        time.sleep(5)                       # brief pause between pairs
 
     report["finished"] = datetime.now(timezone.utc).isoformat()
     (LOG_DIR / "last_run.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))
