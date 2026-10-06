@@ -55,9 +55,37 @@ def raw_path(pair: str, tf: str, price: str, year: int) -> Path:
     return RAW_DIR / f"{pair}_{tf}_{price}_{year}.csv"
 
 
+def _fetch_range(pair: str, tf: str, price: str, d0: str, d1: str,
+                 stem: str, retries: int = 3) -> Path | None:
+    """One dukascopy-node call for a SMALL range (a month) — avoids the big-request rate limit."""
+    f = RAW_DIR / f"{stem}.csv"
+    cmd = DUKA + [
+        "-i", pair, "-from", d0, "-to", d1,
+        "-t", tf, "-p", price, "-f", "csv", "-v",
+        "-dir", str(RAW_DIR), "-fn", stem,
+        "-r", "3", "-re", "-rp", "2000",
+        "-bs", "10", "-bp", "1000", "-s",
+    ]
+    for attempt in range(1, retries + 1):
+        try:
+            subprocess.run(cmd, check=True, timeout=600,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        except subprocess.TimeoutExpired:
+            log(f"  ! chunk {stem} timed out (attempt {attempt})")
+        except subprocess.CalledProcessError as e:
+            log(f"  ! chunk {stem} failed (attempt {attempt}): {(e.stderr or '')[-160:]}")
+        if f.exists() and f.stat().st_size > 0:
+            return f
+        if f.exists() and f.stat().st_size == 0:
+            f.unlink()
+        time.sleep(2 * attempt)
+    return None
+
+
 def download_year(pair: str, year: int, tf: str, price: str, force: bool = False,
-                  retries: int = 5) -> Path | None:
-    """Download one pair-year. Yearly split = resumable + smaller failures."""
+                  retries: int = 4) -> Path | None:
+    """Download one pair-year in MONTHLY chunks (small requests survive Dukascopy's rate limit),
+    then merge the chunks into the yearly CSV. Resumable: a cached yearly file is reused."""
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     out = raw_path(pair, tf, price, year)
     if out.exists() and out.stat().st_size > 0 and not force:
@@ -65,47 +93,35 @@ def download_year(pair: str, year: int, tf: str, price: str, force: bool = False
         return out
 
     today = date.today()
-    # date-to is treated as an upper bound; overlaps are de-duplicated later.
-    to = f"{year + 1}-01-01" if year < today.year else "now"
-    cmd = DUKA + [
-        "-i", pair, "-from", f"{year}-01-01", "-to", to,
-        "-t", tf, "-p", price, "-f", "csv", "-v",
-        "-dir", str(RAW_DIR), "-fn", out.stem,
-        "-r", "3", "-re", "-rp", "2000",
-        "-bs", "10", "-bp", "1000", "-s",
-    ]
-    tmp_backup = None
-    if out.exists() and force:
-        tmp_backup = out.with_suffix(".csv.bak")
-        out.replace(tmp_backup)
+    parts: list[Path] = []
+    for month in range(1, 13):
+        if date(year, month, 1) > today:
+            break
+        m0 = f"{year}-{month:02d}-01"
+        m1 = f"{year + 1}-01-01" if month == 12 else f"{year}-{month + 1:02d}-01"
+        stem = f".chunk_{pair}_{tf}_{price}_{year}_{month:02d}"
+        f = _fetch_range(pair, tf, price, m0, m1, stem, retries=retries)
+        if f:
+            parts.append(f)
+        time.sleep(1.0)                      # small gap between monthly requests
 
-    for attempt in range(1, retries + 1):
-        try:
-            subprocess.run(cmd, check=True, timeout=3600,
-                           stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
-            if out.exists() and out.stat().st_size > 0:
-                log(f"  + {out.name} ({out.stat().st_size / 1e6:.1f} MB)")
-                if tmp_backup and tmp_backup.exists():
-                    tmp_backup.unlink()
-                return out
-            if year < 2000:
-                log(f"  ! no data for {out.stem} (pre-2000, truly empty — skipping)")
-                return None
-            log(f"  ! empty/blocked for {out.stem} attempt {attempt}/{retries} — retrying")
-        except subprocess.CalledProcessError as e:
-            log(f"  ! attempt {attempt} failed for {out.stem}: {(e.stderr or '')[-300:]}")
-        except subprocess.TimeoutExpired:
-            log(f"  ! attempt {attempt} timed out for {out.stem}")
-        if out.exists() and out.stat().st_size == 0:
-            out.unlink()
-        time.sleep(min(60, 15 * attempt))
+    if not parts:
+        if year < 2000:
+            log(f"  ! no data for {out.stem} (pre-2000, truly empty — skipping)")
+        else:
+            log(f"  x giving up on {out.stem}")
+        return None
 
-    if tmp_backup and tmp_backup.exists():          # keep the old data if refresh failed
-        tmp_backup.replace(out)
-        log(f"  ~ refresh failed, kept previous {out.name}")
-        return out
-    log(f"  x giving up on {out.stem}")
-    return None
+    frames = [pd.read_csv(p) for p in parts if p.stat().st_size > 0]
+    merged = (pd.concat(frames, ignore_index=True)
+                .drop_duplicates(subset=["timestamp"])
+                .sort_values("timestamp"))
+    merged.to_csv(out, index=False)
+    for p in parts:
+        p.unlink()
+    log(f"  + {out.name} ({out.stat().st_size / 1e6:.1f} MB, {len(merged)} bars)")
+    return out
+
 
 
 def build_frame(pair: str, tf: str, price: str) -> pd.DataFrame:
