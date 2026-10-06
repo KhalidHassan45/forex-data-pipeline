@@ -121,6 +121,65 @@ def london_breakout(df, range_end=7, flat_hour=16):
     return pd.Series(pos, index=df.index)
 
 
+# ---------------------------------------------------------------- momentum / volatility (new)
+def macd_trend(df, fast=12, slow=26, sig=9):
+    """MACD above its signal line = long, below = short."""
+    c = df["close"]
+    macd = c.ewm(span=fast, adjust=False).mean() - c.ewm(span=slow, adjust=False).mean()
+    signal = macd.ewm(span=sig, adjust=False).mean()
+    pos = np.where(macd > signal, 1.0, -1.0)
+    pos[signal.isna().to_numpy()] = 0.0
+    return pd.Series(pos, index=df.index)
+
+
+def rsi_trend_filter(df, n=14, band=30, exit=50, trend=200):
+    """RSI reversion, but ONLY with the long-term trend (cuts whipsaw)."""
+    c = df["close"]
+    r = rsi(c, n).to_numpy()
+    ma = c.rolling(trend).mean().to_numpy()
+    cc = c.to_numpy()
+    up = cc > ma
+    lo, hi = band, 100 - band
+    pos = np.zeros(len(cc))
+    p = 0.0
+    for i in range(len(cc)):
+        if np.isnan(r[i]) or np.isnan(ma[i]):
+            continue
+        if p == 0:
+            if up[i] and r[i] < lo:
+                p = 1.0
+            elif (not up[i]) and r[i] > hi:
+                p = -1.0
+        elif p > 0 and r[i] > exit:
+            p = 0.0
+        elif p < 0 and r[i] < exit:
+            p = 0.0
+        pos[i] = p
+    return pd.Series(pos, index=df.index)
+
+
+def keltner_breakout(df, n=20, mult=1.5):
+    """Volatility-channel breakout: close beyond the Keltner band = breakout trade."""
+    c = df["close"]
+    ema = c.ewm(span=n, adjust=False).mean()
+    a = atr(df, n)
+    up, dn = (ema + mult * a).to_numpy(), (ema - mult * a).to_numpy()
+    m, cc = ema.to_numpy(), c.to_numpy()
+    pos = np.zeros(len(cc))
+    p = 0.0
+    for i in range(len(cc)):
+        if np.isnan(m[i]):
+            continue
+        if p == 0:
+            p = 1.0 if cc[i] > up[i] else -1.0 if cc[i] < dn[i] else 0.0
+        elif p > 0 and cc[i] < m[i]:
+            p = 0.0
+        elif p < 0 and cc[i] > m[i]:
+            p = 0.0
+        pos[i] = p
+    return pd.Series(pos, index=df.index)
+
+
 # ---------------------------------------------------------------- registry
 def _grid(**axes):
     keys = list(axes)
@@ -134,5 +193,8 @@ STRATEGIES = {
     "bollinger_reversion": (bollinger_reversion, _grid(n=[20, 50], k=[2.0, 2.5]), "reversion"),
     "london_breakout": (london_breakout, _grid(range_end=[6, 7], flat_hour=[14, 16]), "session"),
 }
+STRATEGIES["macd_trend"] = (macd_trend, _grid(fast=[12], slow=[26, 50], sig=[9]), "trend")
+STRATEGIES["rsi_trend_filter"] = (rsi_trend_filter, _grid(n=[14], band=[25, 30], exit=[50], trend=[100, 200]), "reversion")
+STRATEGIES["keltner_breakout"] = (keltner_breakout, _grid(n=[20, 50], mult=[1.5, 2.0]), "trend")
 INTRADAY_ONLY = {"london_breakout"}
 STOP_GRID = [0.0, 3.0]   # ATR multiples; 0 = no stop. Added to every strategy's grid.
