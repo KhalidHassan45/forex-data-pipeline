@@ -1,0 +1,27 @@
+services:
+  forex-worker:
+    build: .
+    restart: unless-stopped
+    environment:
+      - DATA_DIR=/data
+      - SUPABASE_DB_URL=${SUPABASE_DB_URL}
+      - FOREX_TF=${FOREX_TF:-h1}
+      - FOREX_PAIRS=${FOREX_PAIRS:-eurusd gbpusd usdjpy usdchf audusd usdcad nzdusd eurgbp eurjpy gbpjpy xauusd}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+    volumes:
+      - forex-data:/data
+    # Protect the other client services on the same server
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 2g
+    healthcheck:
+      test: ["CMD", "test", "-d", "/data"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  forex-data:
