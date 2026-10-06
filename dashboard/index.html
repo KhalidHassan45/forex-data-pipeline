@@ -1,0 +1,716 @@
+<title>مختبر الاستراتيجيات</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: lab instrument panel — sticky bar + tabs, summary first, then evidence. RTL. */
+:root{
+  color-scheme:light;
+  --page:#f4f5f6; --surface:#fcfcfb; --sunk:#eef0f2; --line:#e1e3e6; --axis:#c3c4c7;
+  --ink:#0d1117; --ink-2:#4b5260; --muted:#838895;
+  --accent:#1c5cab; --accent-soft:#e3edfa; --series:#2a78d6; --series-wash:rgba(42,120,214,.10);
+  --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b; --good-ink:#006300; --crit-ink:#b42f2f;
+  --d-n3:#b42f2f; --d-n2:#e97573; --d-n1:#f6c7c6; --d-0:#ecebe7; --d-p1:#b7d3f6; --d-p2:#5598e7; --d-p3:#184f95;
+  --ring:rgba(13,17,23,.10); --shadow:0 1px 2px rgba(13,17,23,.06),0 4px 16px rgba(13,17,23,.04);
+  --sans:"IBM Plex Sans Arabic",system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --page:#0e1013; --surface:#16191d; --sunk:#1d2126; --line:#2a2e34; --axis:#3a3f46;
+  --ink:#f3f4f6; --ink-2:#c1c5cc; --muted:#8a909a;
+  --accent:#6da7ec; --accent-soft:#16263b; --series:#3987e5; --series-wash:rgba(57,135,229,.14);
+  --good-ink:#2fc22f; --crit-ink:#ef7a7a;
+  --d-n3:#d05050; --d-n2:#9a3a3a; --d-n1:#4d2a2a; --d-0:#2c2f33; --d-p1:#1f3a5e; --d-p2:#2a6dc0; --d-p3:#7fb2f0;
+  --ring:rgba(255,255,255,.10); --shadow:0 1px 2px rgba(0,0,0,.4);
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0e1013; --surface:#16191d; --sunk:#1d2126; --line:#2a2e34; --axis:#3a3f46;
+  --ink:#f3f4f6; --ink-2:#c1c5cc; --muted:#8a909a;
+  --accent:#6da7ec; --accent-soft:#16263b; --series:#3987e5; --series-wash:rgba(57,135,229,.14);
+  --good-ink:#2fc22f; --crit-ink:#ef7a7a;
+  --d-n3:#d05050; --d-n2:#9a3a3a; --d-n1:#4d2a2a; --d-0:#2c2f33; --d-p1:#1f3a5e; --d-p2:#2a6dc0; --d-p3:#7fb2f0;
+  --ring:rgba(255,255,255,.10); --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html{direction:rtl}
+body{margin:0;background:var(--page);color:var(--ink);font:14px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+.num,.mono{font-family:var(--mono);direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums}
+h1,h2,h3{margin:0;text-wrap:balance;font-weight:600}
+a{color:var(--accent)}
+button,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+
+/* top bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--page) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar-in{max-width:1320px;margin:0 auto;padding:12px 20px 0;display:grid;gap:10px}
+.bar-top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.brand-mark{width:34px;height:34px;border-radius:9px;background:var(--ink);color:var(--page);display:grid;place-items:center;flex:none}
+.brand-mark svg{width:20px;height:20px}
+.brand h1{font-size:18px;line-height:1.2}
+.brand p{margin:0;color:var(--muted);font-size:12px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0;max-width:100%}
+.runchip{max-width:100%;min-width:0}
+.runchip select{min-width:0;max-width:min(360px,62vw);text-overflow:ellipsis}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:12px;color:var(--ink-2);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block}
+select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:13px;max-width:100%}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.tabs button{background:none;border:0;padding:10px 14px;color:var(--ink-2);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-weight:500}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs button:hover{color:var(--ink)}
+
+main{max-width:1320px;margin:0 auto;padding-inline:20px;padding-block:20px 60px;display:grid;gap:20px}
+.sample{background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);color:var(--ink);padding:10px 14px;border-radius:var(--r);font-size:13px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);min-width:0}
+.card h2{font-size:15px}
+.card .sub{color:var(--muted);font-size:12px;margin:2px 0 0}
+.head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:8px 16px;margin-bottom:14px}
+.eyebrow{font-size:11px;letter-spacing:.04em;color:var(--muted);font-weight:500}
+
+/* hero + tiles */
+.hero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,2fr);gap:16px}
+@media (max-width:900px){.hero{grid-template-columns:1fr}}
+.hero-fig{display:flex;flex-direction:column;justify-content:space-between;gap:14px}
+.hero-num{font-size:56px;line-height:1;font-weight:600;letter-spacing:-.02em}
+.hero-num small{font-size:22px;color:var(--muted);font-weight:500}
+.hero p{margin:0;color:var(--ink-2)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:4px;align-content:start;min-width:0}
+.tile .lbl{font-size:12px;color:var(--muted)}
+.tile .val{font-size:24px;font-weight:600;line-height:1.2;overflow-wrap:anywhere}
+.tile .note{font-size:12px;color:var(--ink-2)}
+
+/* status pills */
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px 2px 8px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--surface);white-space:nowrap;color:var(--ink)}
+.pill svg{width:14px;height:14px;flex:none}
+.big-pill{font-size:14px;padding:4px 14px 4px 10px}
+.big-pill svg{width:18px;height:18px}
+
+/* filters */
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;background:var(--sunk);border-radius:8px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:none;padding:5px 12px;border-radius:6px;cursor:pointer;color:var(--ink-2);font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.linkbtn{background:none;border:1px solid var(--line);border-radius:8px;padding:5px 12px;cursor:pointer;font-size:13px;color:var(--ink-2)}
+.linkbtn:hover{color:var(--ink);border-color:var(--axis)}
+
+/* heatmap */
+.scroll{overflow-x:auto;min-width:0}
+.heat{border-collapse:separate;border-spacing:2px;font-size:12px}
+.heat th{font-weight:500;color:var(--ink-2);padding:4px 8px;white-space:nowrap}
+.heat th.row{text-align:right;position:sticky;right:0;background:var(--surface);z-index:1}
+.heat td{padding:0}
+.cell{direction:ltr;width:66px;height:42px;border:0;border-radius:5px;cursor:pointer;display:grid;place-items:center;font:500 12px var(--mono);position:relative;transition:transform .08s}
+.cell:hover{transform:scale(1.06);z-index:2}
+.cell[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:1px}
+.cell .ok{position:absolute;top:3px;left:4px;width:12px;height:12px}
+.scale{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;font-size:12px;color:var(--ink-2);margin-top:12px}
+.scale span{display:inline-flex;align-items:center;gap:5px}
+.sw{width:18px;height:12px;border-radius:3px;display:inline-block}
+
+/* detail */
+.detail-head{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between}
+.detail-title{display:grid;gap:4px}
+.detail-title h2{font-size:20px}
+.scorebox{display:flex;align-items:center;gap:14px}
+.gauge{width:84px;height:84px;flex:none}
+.score-lbl{display:grid;gap:2px}
+.score-lbl b{font-size:15px}
+.score-lbl span{font-size:12px;color:var(--muted)}
+.checks{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.checks li{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border-radius:8px;background:var(--sunk)}
+.checks li svg{width:18px;height:18px}
+.checks .thr{font-size:12px;color:var(--muted)}
+.checks .v{font-weight:600}
+.parts{display:grid;gap:9px}
+.part{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr) 46px;gap:10px;align-items:center;font-size:12px}
+.part .track{height:8px;background:var(--accent-soft);border-radius:4px;overflow:hidden}
+.part .fill{height:100%;background:var(--series);border-radius:4px}
+.part .pv{text-align:left;color:var(--ink-2)}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr));gap:10px}
+.metric{padding:10px 12px;border:1px solid var(--line);border-radius:8px;display:grid;gap:2px}
+.metric .lbl{font-size:11px;color:var(--muted)}
+.metric .val{font-size:17px;font-weight:600}
+
+/* charts */
+.chart{position:relative;width:100%}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:8px;padding:6px 10px;font-size:12px;white-space:nowrap;z-index:5;display:none}
+.tip b{font:600 13px var(--mono);display:block}
+.tip span{color:var(--muted)}
+
+/* tables */
+table.t{width:100%;border-collapse:collapse;font-size:13px}
+.t th{font-weight:500;color:var(--muted);font-size:12px;text-align:right;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.t td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.t tr:last-child td{border-bottom:0}
+.t td.n{font-family:var(--mono);direction:ltr;text-align:left;font-variant-numeric:tabular-nums;white-space:nowrap}
+.t tbody tr.click{cursor:pointer}
+.t tbody tr.click:hover{background:var(--sunk)}
+.badge{font:500 11px var(--mono);padding:1px 6px;border-radius:4px;background:var(--sunk);color:var(--ink-2);white-space:nowrap}
+.passdots{display:inline-flex;gap:3px;direction:ltr}
+.passdots i{width:8px;height:8px;border-radius:2px;background:var(--line);display:block}
+.passdots i.on{background:var(--good)}
+.empty{color:var(--muted);font-size:13px;padding:18px;text-align:center;background:var(--sunk);border-radius:8px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.stack{display:flex;height:16px;border-radius:4px;overflow:hidden;gap:2px;background:var(--surface);min-width:60px}
+.stack i{display:block;height:100%}
+.meter{height:10px;background:var(--accent-soft);border-radius:5px;overflow:hidden}
+.meter i{display:block;height:100%;border-radius:5px}
+.note-box{border-inline-start:3px solid var(--warn);background:var(--sunk);padding:10px 14px;border-radius:6px;font-size:13px;color:var(--ink-2)}
+.funnel{display:grid;gap:8px}
+.frow{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr) 70px;gap:12px;align-items:center;font-size:13px}
+.frow .fbar{height:22px;border-radius:0 4px 4px 0;border:0;background:var(--d-p2);position:static;backdrop-filter:none;min-width:3px}
+.frow .fv{font-family:var(--mono);text-align:left;font-weight:500}
+.lb{display:grid;gap:8px}
+.lb-row{display:grid;grid-template-columns:minmax(0,1.4fr) auto minmax(0,1fr) 54px;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:8px;cursor:pointer;background:var(--surface);text-align:start}
+.lb-row:hover{border-color:var(--axis)}
+.lb-row .nm{font-weight:600;overflow-wrap:anywhere}
+.lb-row .fam{font-size:11px;color:var(--muted)}
+.spec{display:grid;gap:6px;font-size:13px}
+.spec div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dashed var(--line);padding-bottom:4px}
+.spec div span:first-child{color:var(--muted)}
+[hidden]{display:none!important}
+@media (max-width:560px){
+  .hero-num{font-size:44px}
+  .part{grid-template-columns:minmax(0,1fr) 46px}.part .track{grid-column:1/-1;order:3}
+  .lb-row{grid-template-columns:minmax(0,1fr) auto}.lb-row .mt,.lb-row .sc{display:none}
+  .frow{grid-template-columns:minmax(0,1fr) 60px}.frow .fbar{grid-column:1/-1;order:3}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="bar">
+  <div class="bar-in">
+    <div class="bar-top">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6.5L4.8 18.2A1.9 1.9 0 0 0 6.4 21h11.2a1.9 1.9 0 0 0 1.6-2.8L14 9.5V3"/><path d="M7.5 15h9"/></svg></div>
+        <div><h1>مختبر الاستراتيجيات</h1><p>Walk-forward · خارج العينة · بعد التكاليف</p></div>
+      </div>
+      <div class="controls">
+        <span class="chip" id="fresh"><i class="dot" style="background:var(--muted)"></i><span>…</span></span>
+        <label class="chip runchip" for="runSel" style="padding:2px 4px 2px 10px">تشغيل المختبر
+          <select id="runSel" aria-label="اختر تشغيل المختبر"></select></label>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="الأقسام">
+      <button role="tab" id="t-overview" aria-selected="true" data-tab="overview">نظرة عامة</button>
+      <button role="tab" id="t-lab" aria-selected="false" data-tab="lab">الاستراتيجيات</button>
+      <button role="tab" id="t-research" aria-selected="false" data-tab="research">البحث والخزنة</button>
+      <button role="tab" id="t-imports" aria-selected="false" data-tab="imports">الاستيراد</button>
+      <button role="tab" id="t-data" aria-selected="false" data-tab="data">البيانات</button>
+    </nav>
+  </div>
+</header>
+
+<main id="app">
+  <div class="empty" id="loading">جارٍ تحميل بيانات المختبر…</div>
+</main>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+"use strict";
+/* ---------------------------------------------------------------- helpers */
+const $ = (s, r = document) => r.querySelector(s);
+const SVGNS = "http://www.w3.org/2000/svg";
+function h(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") e.className = v; else if (k === "style") e.setAttribute("style", v);
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) e.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  return e;
+}
+function s(tag, attrs = {}, ...kids) {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) if (v != null) e.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) e.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  return e;
+}
+const num = (v, d = 2) => v == null || isNaN(v) ? "—" : Number(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+const int = v => v == null ? "—" : Number(v).toLocaleString("en-US");
+const pct = (v, d = 1) => v == null ? "—" : (v > 0 ? "+" : "") + num(v, d) + "%";
+const N = (txt) => h("span", { class: "num" }, txt);
+const fmtDate = iso => { if (!iso) return "—"; const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleDateString("ar-EG-u-nu-latn", { year: "numeric", month: "short", day: "numeric" }); };
+const fmtDT = iso => { if (!iso) return "—"; const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleString("ar-EG-u-nu-latn", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); };
+const tip = $("#tip");
+function showTip(evt, nodes) { tip.replaceChildren(...nodes); tip.style.display = "block"; moveTip(evt); }
+function moveTip(evt) {
+  const r = tip.getBoundingClientRect(), x = evt.clientX, y = evt.clientY;
+  let L = x + 14; if (L + r.width > innerWidth - 8) L = x - r.width - 14;
+  let T = y - r.height - 10; if (T < 8) T = y + 16;
+  tip.style.left = (L + scrollX) + "px"; tip.style.top = (T + scrollY) + "px";
+}
+const hideTip = () => tip.style.display = "none";
+
+/* status icons (shape + label carry meaning, color supports) */
+const ICON = {
+  pass: c => s("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" }, s("circle", { cx: 10, cy: 10, r: 9, fill: c || "var(--good)" }), s("path", { d: "M6 10.4l2.6 2.6L14.2 7.4", fill: "none", stroke: "#fff", "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round" })),
+  fail: c => s("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" }, s("circle", { cx: 10, cy: 10, r: 9, fill: c || "var(--crit)" }), s("path", { d: "M7 7l6 6M13 7l-6 6", fill: "none", stroke: "#fff", "stroke-width": 2, "stroke-linecap": "round" })),
+  warn: () => s("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" }, s("path", { d: "M10 1.8l8.6 15.4H1.4z", fill: "var(--warn)" }), s("path", { d: "M10 7.5v4.5M10 14.6v.1", stroke: "#1a1a19", "stroke-width": 2, "stroke-linecap": "round" })),
+  block: () => s("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" }, s("circle", { cx: 10, cy: 10, r: 9, fill: "var(--crit)" }), s("path", { d: "M5.5 10h9", stroke: "#fff", "stroke-width": 2.4, "stroke-linecap": "round" })),
+  wait: () => s("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" }, s("circle", { cx: 10, cy: 10, r: 8.2, fill: "none", stroke: "var(--muted)", "stroke-width": 1.6 }), s("path", { d: "M10 5.5V10l3 2", fill: "none", stroke: "var(--muted)", "stroke-width": 1.6, "stroke-linecap": "round" })),
+};
+const VERDICT = {
+  PASS: ["pass", "اجتازت"], FAIL: ["fail", "لم تجتز"], NO_DATA: ["wait", "بيانات غير كافية"],
+  SURVIVOR: ["pass", "ناجية"], WEAK: ["warn", "ضعيفة (صدفة غالبًا)"], BLOCKED: ["block", "محظورة"], READY: ["wait", "جاهزة للاختبار"],
+  REGISTERED: ["wait", "مسجّلة"], CANDIDATE: ["warn", "مرشّحة"], VAULT_PASS: ["pass", "اجتازت الخزنة"], VAULT_FAIL: ["fail", "فشلت في الخزنة"],
+};
+function pill(code, big) { const [ic, label] = VERDICT[code] || ["wait", code || "—"]; return h("span", { class: "pill" + (big ? " big-pill" : "") }, ICON[ic](), label); }
+
+/* diverging scale for Sharpe — bins anchored to the pass threshold (0.5) */
+const DIV = [
+  { max: -1, v: "--d-n3", lbl: "≤ −1", dark: true }, { max: -0.25, v: "--d-n2", lbl: "−1 … −0.25" },
+  { max: 0.25, v: "--d-0", lbl: "قرب الصفر" }, { max: 0.5, v: "--d-p1", lbl: "0.25 … 0.5" },
+  { max: 1, v: "--d-p2", lbl: "0.5 … 1", dark: true }, { max: Infinity, v: "--d-p3", lbl: "≥ 1", dark: true },
+];
+const divBin = v => DIV.find(b => v <= b.max) || DIV[DIV.length - 1];
+function inkFor(varName) {
+  const c = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  const m = c.match(/^#(..)(..)(..)$/); if (!m) return "var(--ink)";
+  const [r, g, b] = m.slice(1).map(x => parseInt(x, 16) / 255).map(x => x <= .03928 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4);
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) > 0.36 ? "#0d1117" : "#ffffff";
+}
+
+/* ---------------------------------------------------------------- state */
+let D = null;
+const S = { tab: "overview", run: null, family: "all", sel: null, heatTable: false };
+try { const t = localStorage.getItem("lab.tab"); if (t) S.tab = t; } catch (e) {}
+
+const FAMILY = { trend: "اتجاه", reversion: "ارتداد", session: "جلسات", other: "أخرى" };
+const STRAT_AR = {
+  sma_cross: "تقاطع المتوسطات", donchian_breakout: "كسر قنوات Donchian", rsi_reversion: "ارتداد RSI",
+  bollinger_reversion: "ارتداد Bollinger", london_breakout: "كسر افتتاح لندن",
+};
+const stratName = k => STRAT_AR[k] || (k.startsWith("imp_") ? k.slice(4) : k);
+
+function currentRun() { return D.lab.runs.find(r => r.id === S.run) || D.lab.runs[0]; }
+
+/* ---------------------------------------------------------------- charts */
+function equityChart(series, { h: H = 230 } = {}) {
+  const wrap = h("div", { class: "chart" });
+  if (!series || series.length < 2) return h("div", { class: "empty" }, "لا يوجد منحنى رأس مال لهذا الاختيار.");
+  const W = 720, m = { t: 12, r: 52, b: 26, l: 12 };
+  const xs = series.map(p => new Date(p[0]).getTime()), ys = series.map(p => p[1]);
+  let y0 = Math.min(1, ...ys), y1 = Math.max(1, ...ys); const pad = (y1 - y0) * .08 || .05; y0 -= pad; y1 += pad;
+  const X = t => m.l + (t - xs[0]) / (xs[xs.length - 1] - xs[0]) * (W - m.l - m.r);
+  const Y = v => m.t + (1 - (v - y0) / (y1 - y0)) * (H - m.t - m.b);
+  const svg = s("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "منحنى رأس المال خارج العينة" });
+  svg.style.direction = "ltr";
+  // y grid: 4 clean ticks
+  const step = niceStep((y1 - y0) / 4);
+  for (let v = Math.ceil(y0 / step) * step; v <= y1; v += step) {
+    svg.append(s("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: "var(--line)", "stroke-width": 1 }));
+    svg.append(s("text", { x: W - m.r + 6, y: Y(v) + 4, "font-size": 11, fill: "var(--muted)", "font-family": "var(--mono)" }, pct((v - 1) * 100, 0)));
+  }
+  svg.append(s("line", { x1: m.l, x2: W - m.r, y1: Y(1), y2: Y(1), stroke: "var(--axis)", "stroke-width": 1 }));
+  // x year ticks
+  const y0d = new Date(xs[0]).getUTCFullYear(), y1d = new Date(xs[xs.length - 1]).getUTCFullYear();
+  for (let y = y0d + 1; y <= y1d; y++) {
+    const t = Date.UTC(y, 0, 1), x = X(t);
+    svg.append(s("text", { x, y: H - 6, "font-size": 11, fill: "var(--muted)", "text-anchor": "middle", "font-family": "var(--mono)" }, String(y)));
+  }
+  const pts = series.map((p, i) => `${X(xs[i]).toFixed(1)},${Y(ys[i]).toFixed(1)}`);
+  svg.append(s("path", { d: `M${pts[0]} L${pts.join(" L")} L${X(xs.at(-1))},${Y(y0)} L${X(xs[0])},${Y(y0)}Z`, fill: "var(--series-wash)" }));
+  svg.append(s("path", { d: `M${pts.join(" L")}`, fill: "none", stroke: "var(--series)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+  const ex = X(xs.at(-1)), ey = Y(ys.at(-1));
+  svg.append(s("circle", { cx: ex, cy: ey, r: 4.5, fill: "var(--series)", stroke: "var(--surface)", "stroke-width": 2 }));
+  const cross = s("line", { y1: m.t, y2: H - m.b, stroke: "var(--axis)", "stroke-width": 1, visibility: "hidden" });
+  const dotH = s("circle", { r: 4.5, fill: "var(--series)", stroke: "var(--surface)", "stroke-width": 2, visibility: "hidden" });
+  svg.append(cross, dotH);
+  const hit = s("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent", tabindex: 0 });
+  const onMove = evt => {
+    const r = svg.getBoundingClientRect(), px = (evt.clientX - r.left) / r.width * W;
+    let i = 0, best = Infinity; xs.forEach((t, j) => { const d = Math.abs(X(t) - px); if (d < best) { best = d; i = j; } });
+    cross.setAttribute("x1", X(xs[i])); cross.setAttribute("x2", X(xs[i])); cross.setAttribute("visibility", "visible");
+    dotH.setAttribute("cx", X(xs[i])); dotH.setAttribute("cy", Y(ys[i])); dotH.setAttribute("visibility", "visible");
+    showTip(evt, [h("b", {}, pct((ys[i] - 1) * 100)), h("span", {}, fmtDate(series[i][0]))]);
+  };
+  hit.addEventListener("pointermove", onMove);
+  hit.addEventListener("pointerleave", () => { hideTip(); cross.setAttribute("visibility", "hidden"); dotH.setAttribute("visibility", "hidden"); });
+  svg.append(hit);
+  wrap.append(svg);
+  wrap.append(h("div", { class: "legend", style: "margin-top:6px" },
+    h("span", {}, "العائد التراكمي خارج العينة، بدون رافعة: ", N(pct((ys.at(-1) - 1) * 100)))));
+  return wrap;
+}
+function niceStep(raw) { const p = 10 ** Math.floor(Math.log10(raw || 1)); const n = raw / p; return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * p; }
+
+function hbars(items, { thr = null, thrLabel = "", fmt = v => num(v), max = null } = {}) {
+  // items: [{label, value}] — one measure, one color; threshold drawn as a hairline
+  const W = 560, rowH = 34, m = { l: 60, r: 130 }, H = items.length * rowH + 22;
+  const vals = items.map(i => i.value ?? 0);
+  const lo = Math.min(0, ...vals, thr ?? 0), hi = max ?? Math.max(0.0001, ...vals, thr ?? 0) * 1.1;
+  const X = v => m.r + (v - lo) / (hi - lo) * (W - m.l - m.r);   // RTL-agnostic: bars grow left→right in a LTR svg
+  const svg = s("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "مقارنة" });
+  svg.style.direction = "ltr";
+  items.forEach((it, i) => {
+    const y = 6 + i * rowH, v = it.value ?? 0, x0 = X(0), x1 = X(v);
+    svg.append(s("text", { x: m.r - 10, y: y + 17, "text-anchor": "end", "font-size": 12, fill: "var(--ink-2)", "font-family": "var(--sans)" }, it.label));
+    svg.append(s("rect", { x: Math.min(x0, x1), y: y + 5, width: Math.max(2, Math.abs(x1 - x0)), height: 18, rx: 4, fill: it.color || "var(--series)" }));
+    svg.append(s("text", { x: Math.max(x0, x1) + 6, y: y + 18, "font-size": 12, fill: "var(--ink)", "font-family": "var(--mono)" }, fmt(it.value)));
+  });
+  svg.append(s("line", { x1: X(0), x2: X(0), y1: 4, y2: H - 18, stroke: "var(--axis)", "stroke-width": 1 }));
+  if (thr != null) {
+    svg.append(s("line", { x1: X(thr), x2: X(thr), y1: 2, y2: H - 18, stroke: "var(--ink)", "stroke-width": 1 }));
+    svg.append(s("text", { x: X(thr), y: H - 4, "text-anchor": "middle", "font-size": 11, fill: "var(--ink-2)", "font-family": "var(--sans)" }, thrLabel));
+  }
+  return h("div", { class: "chart" }, svg);
+}
+
+function gauge(score) {
+  const r = 34, c = 2 * Math.PI * r, v = Math.max(0, Math.min(100, score ?? 0));
+  return s("svg", { class: "gauge", viewBox: "0 0 84 84", role: "img", "aria-label": `مؤشر القوة ${v} من 100` },
+    s("circle", { cx: 42, cy: 42, r, fill: "none", stroke: "var(--accent-soft)", "stroke-width": 8 }),
+    s("circle", { cx: 42, cy: 42, r, fill: "none", stroke: "var(--series)", "stroke-width": 8, "stroke-linecap": "round",
+      "stroke-dasharray": `${c * v / 100} ${c}`, transform: "rotate(-90 42 42)" }),
+    s("text", { x: 42, y: 47, "text-anchor": "middle", "font-size": 22, "font-weight": 600, fill: "var(--ink)", "font-family": "var(--sans)" }, String(v)));
+}
+
+function histogram(bins, thr) {
+  const W = 640, H = 220, m = { t: 14, r: 16, b: 34, l: 40 };
+  const max = Math.max(1, ...bins.map(b => b.n)), bw = (W - m.l - m.r) / bins.length;
+  const Y = n => m.t + (1 - n / max) * (H - m.t - m.b);
+  const svg = s("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "توزيع قوة الدليل t" });
+  svg.style.direction = "ltr";
+  const step = niceStep(max / 4);
+  for (let v = 0; v <= max; v += step) {
+    svg.append(s("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: "var(--line)" }));
+    svg.append(s("text", { x: m.l - 6, y: Y(v) + 4, "text-anchor": "end", "font-size": 11, fill: "var(--muted)", "font-family": "var(--mono)" }, int(v)));
+  }
+  const thrIdx = bins.findIndex(b => b.lo >= thr);
+  if (thrIdx > 0) {
+    const x = m.l + thrIdx * bw;
+    svg.append(s("rect", { x: m.l, y: m.t, width: x - m.l, height: H - m.t - m.b, fill: "var(--sunk)" }));
+    svg.append(s("text", { x: x - 6, y: m.t + 14, "text-anchor": "end", "font-size": 12, fill: "var(--ink-2)", "font-family": "var(--sans)" }, "منطقة الصدفة المحتملة"));
+    svg.append(s("line", { x1: x, x2: x, y1: m.t - 4, y2: H - m.b, stroke: "var(--ink)", "stroke-width": 1 }));
+    svg.append(s("text", { x: x + 6, y: m.t + 14, "font-size": 12, fill: "var(--ink)", "font-family": "var(--sans)" }, `عتبة القبول t ≥ ${thr}`));
+  }
+  bins.forEach((b, i) => {
+    const x = m.l + i * bw + 2, w = Math.min(24, bw - 4), cx = m.l + i * bw + bw / 2;
+    const above = b.lo >= thr;
+    const r = s("rect", { x: cx - w / 2, y: Y(b.n), width: w, height: Math.max(0, H - m.b - Y(b.n)), rx: 3, fill: above ? "var(--series)" : "var(--axis)" });
+    const g = s("g", { tabindex: 0 }, s("rect", { x: m.l + i * bw, y: m.t, width: bw, height: H - m.t - m.b, fill: "transparent" }), r);
+    const lab = b.hi == null ? `≥ ${b.lo}` : `${b.lo}–${b.hi}`;
+    g.addEventListener("pointermove", e => showTip(e, [h("b", {}, int(b.n) + " فرضية"), h("span", {}, "|t| " + lab)]));
+    g.addEventListener("pointerleave", hideTip);
+    svg.append(g);
+    svg.append(s("text", { x: cx, y: H - m.b + 16, "text-anchor": "middle", "font-size": 10, fill: "var(--muted)", "font-family": "var(--mono)" }, String(b.lo)));
+  });
+  svg.append(s("text", { x: (W + m.l) / 2, y: H - 2, "text-anchor": "middle", "font-size": 11, fill: "var(--muted)", "font-family": "var(--sans)" }, "|t| — قوة الدليل الإحصائي"));
+  return h("div", { class: "chart" }, svg);
+}
+
+/* ---------------------------------------------------------------- shared pieces */
+function card(title, sub, ...body) { return h("section", { class: "card" }, h("div", { class: "head" }, h("div", {}, h("h2", {}, title), sub ? h("p", { class: "sub" }, sub) : null)), ...body); }
+function tile(lbl, val, note) { return h("div", { class: "tile" }, h("span", { class: "lbl" }, lbl), h("span", { class: "val" }, val), note ? h("span", { class: "note" }, note) : null); }
+function table(cols, rows, { onRow } = {}) {
+  if (!rows.length) return h("div", { class: "empty" }, "لا توجد بيانات بعد.");
+  return h("div", { class: "scroll" }, h("table", { class: "t" },
+    h("thead", {}, h("tr", {}, cols.map(c => h("th", { style: c.n ? "text-align:left" : null }, c.label)))),
+    h("tbody", {}, rows.map(r => h("tr", { class: onRow ? "click" : null, tabindex: onRow ? 0 : null,
+      onclick: onRow ? () => onRow(r) : null, onkeydown: onRow ? e => { if (e.key === "Enter") onRow(r); } : null },
+      cols.map(c => { const v = c.get(r); return h("td", { class: c.n ? "n" : null }, v instanceof Node ? v : (v ?? "—")); }))))));
+}
+function strengthLabel(row) {
+  const sc = row.score ?? 0;
+  if (row.verdict === "PASS") return sc >= 70 ? "قوية" : "مقبولة";
+  return sc >= 45 ? "قريبة من النجاح" : "ضعيفة";
+}
+
+/* ---------------------------------------------------------------- views */
+function viewOverview() {
+  const run = currentRun(), rows = run ? run.rows.filter(r => r.verdict !== "NO_DATA") : [];
+  const passed = rows.filter(r => r.verdict === "PASS");
+  const R = D.research, I = D.imports;
+  const best = [...rows].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0];
+  const gap = run?.meta?.avg_is_minus_wf_sharpe;
+  const pending = R.pending.length, vpass = R.vault_history.filter(v => v.event === "VAULT_PASS").length;
+
+  const hero = h("div", { class: "hero" },
+    h("section", { class: "card hero-fig" },
+      h("div", {}, h("div", { class: "eyebrow" }, "آخر تشغيل كامل للمختبر"),
+        h("div", { class: "hero-num", style: "margin-top:10px" }, N(String(passed.length)), " ", h("small", {}, "من ", N(String(rows.length)))),
+        h("p", { style: "margin-top:8px" }, "توليفة (استراتيجية × زوج) اجتازت كل معايير walk-forward خارج العينة.")),
+      h("div", { class: "meter", role: "img", "aria-label": "نسبة الاجتياز" }, h("i", { style: `width:${rows.length ? passed.length / rows.length * 100 : 0}%;background:var(--good)` }))),
+    h("div", { class: "tiles" },
+      tile("أقوى نتيجة", best ? h("span", {}, stratName(best.strategy)) : "—", best ? h("span", {}, N(best.pair), " · مؤشر القوة ", N(String(best.score))) : null),
+      tile("فجوة التفاؤل (IS − WF)", N(num(gap)), gap == null ? null : gap > 1 ? "مرتفعة: overfitting واضح" : gap > 0.5 ? "متوسطة" : "منخفضة: النتائج متسقة"),
+      tile("مرشّحات بانتظار موافقتك", N(String(pending)), pending ? "لاختبار الخزنة المقفلة" : "لا شيء معلّق"),
+      tile("فتحات الخزنة", h("span", {}, N(`${R.vault.unlocks}/${R.vault.limit}`)), `${vpass} اجتازت · ${R.vault.unlocks - vpass} فشلت`),
+      tile("استراتيجيات مستوردة مختبرة", N(String(I.lifetime_tested)), `${I.items.filter(i => i.verdict === "SURVIVOR").length} ناجية · ${I.items.filter(i => i.status === "BLOCKED").length} محظورة`),
+      tile("فرضيات مختبرة (إجمالي)", N(int(R.lifetime_tests)), `الصدفة المتوقعة بلا تصحيح ≈ ${int(Math.round(R.lifetime_tests * .05))}`)));
+
+  // funnel: from everything tested to what reached paper-trading readiness
+  const steps = [
+    ["فرضيات وتوليفات مختبرة", R.lifetime_tests + (run?.meta?.total_combos || 0)],
+    ["دلالة إحصائية بعد التصحيح", R.runs.reduce((a, r) => a + (r.bh_significant || 0), 0) + passed.length],
+    ["مرشّحة بعد التكاليف والثبات", R.runs.reduce((a, r) => a + (r.candidates || 0), 0)],
+    ["اجتازت الخزنة المقفلة", vpass],
+    ["جاهزة لـ Paper trading (بموافقتك)", R.promoted.length],
+  ];
+  const fmax = Math.max(1, ...steps.map(x => x[1]));
+  const funnel = card("قمع التصفية", "كل مرحلة تُسقط ما قد يكون صدفة. الأرقام تراكمية.",
+    h("div", { class: "funnel" }, steps.map(([l, v], i) => h("div", { class: "frow" },
+      h("span", {}, l), h("div", { class: "fbar", style: `width:${Math.max(.6, Math.sqrt(v / fmax) * 100)}%;background:var(${["--d-p1", "--d-p1", "--d-p2", "--d-p2", "--d-p3"][i]})` }),
+      h("span", { class: "fv" }, int(v))))),
+    h("p", { class: "sub", style: "margin-top:10px" }, "طول الشريط بمقياس الجذر التربيعي ليظهر الصغير بجانب الكبير."));
+
+  const lb = card("ترتيب الاستراتيجيات", "مرتبة بعدد الأزواج التي اجتازتها ثم وسيط Sharpe. اضغط للتفاصيل.",
+    h("div", { class: "lb" }, (run?.leaderboard || []).map(l => h("button", { class: "lb-row", onclick: () => { S.tab = "lab"; S.family = "all"; S.sel = pickBest(l.strategy); render(); } },
+      h("div", {}, h("div", { class: "nm" }, stratName(l.strategy)), h("div", { class: "fam" }, FAMILY[l.family] || l.family || "")),
+      h("span", { class: "passdots", "aria-label": `${l.passed} من ${l.pairs}` }, Array.from({ length: l.pairs }, (_, i) => h("i", { class: i < l.passed ? "on" : "" }))),
+      h("span", { class: "mt", style: "font-size:12px;color:var(--ink-2)" }, "وسيط Sharpe ", N(num(l.median_wf_sharpe))),
+      h("span", { class: "sc num", style: "text-align:left;font-weight:600" }, String(l.best_score ?? "—"))))));
+
+  return [hero, h("div", { class: "grid g2" }, lb, funnel),
+    h("div", { class: "note-box" }, "كل الأرقام تاريخية ومحسوبة خارج العينة بعد التكاليف، وبدون رافعة. لا شيء هنا يضمن أداءً مستقبليًا، ولا تنتقل أي استراتيجية إلى حساب حقيقي قبل الخزنة ثم Paper trading.")];
+}
+
+function pickBest(strategy) {
+  const rs = currentRun().rows.filter(r => r.strategy === strategy);
+  const b = rs.sort((a, b) => (b.score ?? -1) - (a.score ?? -1))[0];
+  return b ? `${b.strategy}|${b.pair}` : null;
+}
+
+function viewLab() {
+  const run = currentRun();
+  if (!run) return [h("div", { class: "empty" }, "لم يُشغَّل المختبر بعد. نفّذ run_lab.sh ثم أعد بناء اللوحة.")];
+  let rows = run.rows;
+  const fams = ["all", ...new Set(rows.map(r => r.imported ? "imported" : r.family))];
+  if (S.family === "imported") rows = rows.filter(r => r.imported); else if (S.family !== "all") rows = rows.filter(r => r.family === S.family && !r.imported);
+  const strats = [...new Set(rows.map(r => r.strategy))], pairs = [...new Set(run.rows.map(r => r.pair))].sort();
+  const key = r => `${r.strategy}|${r.pair}`;
+  if (!S.sel || !run.rows.some(r => key(r) === S.sel)) S.sel = rows.length ? key([...rows].sort((a, b) => (b.score ?? -1) - (a.score ?? -1))[0]) : null;
+
+  const filt = h("div", { class: "filters" },
+    h("div", { class: "seg", role: "group", "aria-label": "العائلة" }, fams.map(f => h("button", { "aria-pressed": String(S.family === f), onclick: () => { S.family = f; render(); } },
+      f === "all" ? "الكل" : f === "imported" ? "مستوردة" : FAMILY[f] || f))),
+    h("button", { class: "linkbtn", onclick: () => { S.heatTable = !S.heatTable; render(); } }, S.heatTable ? "عرض كخريطة" : "عرض كجدول"),
+    h("span", { class: "chip" }, "إطار ", N(run.meta.tf || "—"), " · تدريب ", N(String(run.meta.train_years)), " / اختبار ", N(String(run.meta.test_years)), " · spread ×", N(String(run.meta.spread_mult))));
+
+  let heatBody;
+  if (S.heatTable) {
+    heatBody = table([
+      { label: "الاستراتيجية", get: r => stratName(r.strategy) }, { label: "الزوج", get: r => N(r.pair) },
+      { label: "الحكم", get: r => pill(r.verdict) }, { label: "Sharpe WF", n: 1, get: r => num(r.wf_sharpe) },
+      { label: "مؤشر القوة", n: 1, get: r => r.score ?? "—" }, { label: "أسباب الرفض", get: r => r.reasons || "—" },
+    ], rows, { onRow: r => { S.sel = key(r); render(); } });
+  } else {
+    const byKey = Object.fromEntries(rows.map(r => [key(r), r]));
+    heatBody = h("div", { class: "scroll" }, h("table", { class: "heat" },
+      h("thead", {}, h("tr", {}, h("th", { class: "row" }, ""), pairs.map(p => h("th", {}, N(p))))),
+      h("tbody", {}, strats.map(st => h("tr", {}, h("th", { class: "row" }, stratName(st)),
+        pairs.map(p => {
+          const r = byKey[`${st}|${p}`];
+          if (!r || r.wf_sharpe == null) return h("td", {}, h("div", { class: "cell", style: "background:var(--sunk);cursor:default;color:var(--muted)" }, "—"));
+          const b = divBin(r.wf_sharpe);
+          const btn = h("button", { class: "cell", "aria-pressed": String(S.sel === key(r)), "aria-label": `${stratName(st)} ${p}: Sharpe ${num(r.wf_sharpe)}، ${VERDICT[r.verdict]?.[1] || r.verdict}`,
+            style: `background:var(${b.v});color:${inkFor(b.v)}`, onclick: () => { S.sel = key(r); render(); $("#detail")?.scrollIntoView({ behavior: "smooth", block: "start" }); } },
+            r.verdict === "PASS" ? s("svg", { class: "ok", viewBox: "0 0 12 12" }, s("circle", { cx: 6, cy: 6, r: 6, fill: "var(--surface)" }), s("path", { d: "M3.3 6.2l1.8 1.8 3.6-3.8", fill: "none", stroke: "var(--good-ink)", "stroke-width": 1.8, "stroke-linecap": "round" })) : null,
+            num(r.wf_sharpe));
+          btn.addEventListener("pointermove", e => showTip(e, [h("b", {}, "Sharpe " + num(r.wf_sharpe)), h("span", {}, `${stratName(st)} · ${p} · قوة ${r.score ?? "—"} · ${VERDICT[r.verdict]?.[1] || ""}`)]));
+          btn.addEventListener("pointerleave", hideTip);
+          return h("td", {}, btn);
+        }))))));
+  }
+  const heat = card("خريطة النتائج: Sharpe خارج العينة", "اللون = قوة العائد مقابل المخاطرة. العلامة ✓ = اجتازت كل المعايير. اضغط أي خلية للتفاصيل.",
+    heatBody,
+    S.heatTable ? null : h("div", { class: "scale" }, h("span", { style: "color:var(--muted)" }, "مقياس Sharpe:"),
+      DIV.map(b => h("span", {}, h("i", { class: "sw", style: `background:var(${b.v})` }), N(b.lbl))),
+      h("span", {}, ICON.pass(), " اجتازت")));
+
+  const sel = run.rows.find(r => key(r) === S.sel);
+  return [filt, heat, sel ? detail(sel, run) : null,
+    card("جدول الاستراتيجيات", null, table([
+      { label: "الاستراتيجية", get: l => stratName(l.strategy) }, { label: "العائلة", get: l => FAMILY[l.family] || l.family },
+      { label: "أزواج ناجحة", get: l => h("span", { class: "passdots" }, Array.from({ length: l.pairs }, (_, i) => h("i", { class: i < l.passed ? "on" : "" }))) },
+      { label: "ناجحة", n: 1, get: l => `${l.passed}/${l.pairs}` }, { label: "وسيط Sharpe", n: 1, get: l => num(l.median_wf_sharpe) },
+      { label: "أعلى مؤشر قوة", n: 1, get: l => l.best_score ?? "—" },
+    ], run.leaderboard, { onRow: l => { S.sel = pickBest(l.strategy); render(); } }))];
+}
+
+function detail(r, run) {
+  const C = run.meta.criteria || {};
+  const crit = [
+    ["Sharpe خارج العينة", r.wf_sharpe, `≥ ${C.min_sharpe ?? 0.5}`, r.wf_sharpe >= (C.min_sharpe ?? 0.5), num(r.wf_sharpe)],
+    ["Profit factor", r.wf_profit_factor, `≥ ${C.min_profit_factor ?? 1.15}`, r.wf_profit_factor >= (C.min_profit_factor ?? 1.15), num(r.wf_profit_factor)],
+    ["عدد الصفقات", r.wf_trades, `≥ ${C.min_trades ?? 100}`, r.wf_trades >= (C.min_trades ?? 100), int(r.wf_trades)],
+    ["أقصى تراجع", r.wf_max_dd_pct, ["أفضل من", `${C.max_drawdown_pct ?? -25}%`], r.wf_max_dd_pct >= (C.max_drawdown_pct ?? -25), pct(r.wf_max_dd_pct)],
+    ["سنوات خارج العينة", r.wf_years, `≥ ${C.min_oos_years ?? 3}`, r.wf_years >= (C.min_oos_years ?? 3), num(r.wf_years, 1)],
+    ["Sharpe بتكاليف ×1.5", r.stress_sharpe, `≥ ${C.min_cost_stress_sharpe ?? 0.2}`, r.stress_sharpe >= (C.min_cost_stress_sharpe ?? 0.2), num(r.stress_sharpe)],
+  ];
+  const nOk = crit.filter(c => c[3]).length;
+  const eq = run.equity[`${r.strategy}|${r.pair}`];
+  const gap = r._gap;
+  const years = (r.params_by_year || "").split(" | ").filter(Boolean).map(x => { const i = x.indexOf(":"); return { y: x.slice(0, i), p: x.slice(i + 1) }; });
+
+  return h("section", { class: "card", id: "detail", style: "display:grid;gap:18px" },
+    h("div", { class: "detail-head" },
+      h("div", { class: "detail-title" }, h("div", { class: "eyebrow" }, (FAMILY[r.family] || r.family || "") + (r.imported ? " · مستوردة" : "")),
+        h("h2", {}, stratName(r.strategy), " · ", N(r.pair)),
+        h("div", { style: "display:flex;gap:8px;flex-wrap:wrap;align-items:center" }, pill(r.verdict, true),
+          h("span", { class: "chip" }, N(`${nOk}/6`), " معايير متحققة"))),
+      h("div", { class: "scorebox" }, gauge(r.score), h("div", { class: "score-lbl" }, h("b", {}, strengthLabel(r)), h("span", {}, "مؤشر القوة من 100"), h("span", {}, "الحكم يتبع المعايير الستة، لا المؤشر")))),
+    h("div", { class: "grid g2" },
+      h("div", { style: "display:grid;gap:10px;min-width:0" }, h("h3", { style: "font-size:14px" }, "معايير الاجتياز"),
+        h("ul", { class: "checks" }, crit.map(([l, , thr, ok, shown]) => h("li", {}, ok ? ICON.pass() : ICON.fail(),
+          h("div", {}, h("div", {}, l), h("div", { class: "thr" }, "المطلوب ", Array.isArray(thr) ? [thr[0] + " ", N(thr[1])] : N(thr))), h("span", { class: "v num" }, shown)))),
+        r.reasons ? h("p", { class: "sub" }, "أسباب الرفض: ", N(r.reasons)) : null),
+      h("div", { style: "display:grid;gap:10px;align-content:start;min-width:0" }, h("h3", { style: "font-size:14px" }, "مكوّنات مؤشر القوة"),
+        h("div", { class: "parts" }, (r.score_parts || []).map(p => h("div", { class: "part" },
+          h("span", {}, p.label), h("div", { class: "track" }, h("div", { class: "fill", style: `width:${p.score * 100}%` })),
+          h("span", { class: "pv num" }, p.value == null ? "—" : p.key === "trades" || p.key === "breadth" ? int(p.value) : p.key === "dd" ? pct(p.value) : num(p.value))))),
+        h("p", { class: "sub" }, "كل مكوّن من 0 إلى 1 بين مستوى «سيئ» ومستوى «جيد»؛ Sharpe والاتساع بوزن مضاعف."))),
+    h("div", { class: "metrics" },
+      [["العائد السنوي", pct(r.wf_cagr_pct)], ["إجمالي العائد", pct(r.wf_total_return_pct, 0)], ["أقصى تراجع", pct(r.wf_max_dd_pct)],
+       ["نسبة الرابحة", num(r.wf_win_rate_pct, 1) + "%"], ["متوسط الصفقة", pct(r.wf_avg_trade_pct, 3)], ["صفقات/سنة", num(r.wf_trades_per_year, 1)],
+       ["زمن التعرض", num(r.wf_exposure_pct, 0) + "%"], ["توليفات مختبرة", int(r.combos_tested)]]
+        .map(([l, v]) => h("div", { class: "metric" }, h("span", { class: "lbl" }, l), h("span", { class: "val num" }, v)))),
+    h("div", { class: "grid g2" },
+      h("div", { style: "min-width:0" }, h("h3", { style: "font-size:14px;margin-bottom:8px" }, "منحنى رأس المال خارج العينة"), equityChart(eq)),
+      h("div", { style: "min-width:0;display:grid;gap:8px;align-content:start" }, h("h3", { style: "font-size:14px" }, "هل النتيجة متفائلة أو هشّة؟"),
+        hbars([{ label: "داخل العينة (IS)", value: r.is_sharpe, color: "var(--axis)" }, { label: "خارج العينة (WF)", value: r.wf_sharpe }, { label: "تكاليف ×1.5", value: r.stress_sharpe }],
+          { thr: C.min_sharpe ?? 0.5, thrLabel: "حد الاجتياز" }),
+        h("p", { class: "sub" }, "فجوة التفاؤل: ", N(num(gap)), gap == null ? "" : gap > 1 ? " · كبيرة: الأداء المعلن داخل العينة لن يتكرر" : gap > 0.5 ? " · متوسطة" : " · صغيرة: نتيجة متسقة"))),
+    h("div", { style: "min-width:0" }, h("h3", { style: "font-size:14px;margin-bottom:8px" }, "المعاملات المختارة في كل سنة اختبار"),
+      h("p", { class: "sub", style: "margin-bottom:8px" }, "عدد مرات تغيّر المعاملات: ", N(String(r.param_changes ?? "—")), (r.param_changes ?? 0) > years.length / 2 ? " · كثير: الاستراتيجية غير مستقرة" : " · مستقرة نسبيًا"),
+      table([{ label: "سنة الاختبار", n: 1, get: x => x.y }, { label: "المعاملات (اختيرت من السنوات السابقة فقط)", get: x => h("span", { class: "mono", style: "font-size:12px" }, x.p) }], years)));
+}
+
+function viewResearch() {
+  const R = D.research;
+  const fp = R.runs.reduce((a, r) => a + (r.expected_false_positives_at_5pct_without_correction || 0), 0);
+  const vp = R.vault_history.filter(v => v.event === "VAULT_PASS").length;
+  const tiles = h("div", { class: "tiles" },
+    tile("فرضيات مختبرة (إجمالي)", N(int(R.lifetime_tests)), `${int(R.unique_hypotheses)} فرضية فريدة`),
+    tile("نتائج «ناجحة» متوقعة بالصدفة", N(int(Math.round(fp))), "لو لم يُطبَّق التصحيح الإحصائي"),
+    tile("مرشّحات معلّقة", N(String(R.pending.length)), "تحتاج موافقتك قبل فتح الخزنة"),
+    h("div", { class: "tile" }, h("span", { class: "lbl" }, "الخزنة المقفلة"),
+      h("span", { class: "val" }, N(`${R.vault.unlocks}/${R.vault.limit}`), h("span", { style: "font-size:13px;color:var(--muted);font-weight:400" }, " فتحة")),
+      h("div", { class: "meter", style: "margin-top:4px" }, h("i", { style: `width:${Math.min(100, R.vault.unlocks / R.vault.limit * 100)}%;background:${R.vault.unlocks >= R.vault.limit ? "var(--crit)" : R.vault.unlocks >= 7 ? "var(--warn)" : "var(--series)"}` })),
+      h("span", { class: "note" }, "تبدأ من ", N(fmtDate(R.vault.start)), ` · ${vp} اجتازت`)));
+  const hist = card("أين تقع الفرضيات؟", "كل فرضية بقوة دليلها. معظمها يجب أن يقع في منطقة الصدفة؛ ما تجاوز العتبة يُفحص بعد التكاليف والثبات.",
+    histogram(R.t_hist, R.t_threshold));
+  const pending = card("مرشّحات بانتظار موافقتك", "للموافقة اكتب لـ Hermes: «أوافق على اختبار الخزنة لـ [المعرّف]». كل فرضية تفتح الخزنة مرة واحدة فقط.",
+    table([{ label: "المعرّف", get: r => h("span", { class: "mono", style: "font-size:12px" }, r.id) },
+      { label: "الاتجاه", get: r => r.direction > 0 ? "اتباع الحركة" : "عكس الحركة" }, { label: "t", n: 1, get: r => num(r.t) },
+      { label: "الثبات", n: 1, get: r => num((r.stability ?? 0) * 100, 0) + "%" }, { label: "Sharpe بعد التكاليف", n: 1, get: r => num(r.net_sharpe) }], R.pending));
+  const vault = card("سجل الخزنة", "الاختبار الوحيد على السنتين اللتين لم يرهما أحد.",
+    table([{ label: "الفرضية", get: r => h("span", { class: "mono", style: "font-size:12px" }, r.id) }, { label: "النتيجة", get: r => pill(r.event) },
+      { label: "t", n: 1, get: r => num(r.t) }, { label: "Sharpe", n: 1, get: r => num(r.net_sharpe) }, { label: "PF", n: 1, get: r => num(r.net_profit_factor) },
+      { label: "أقصى تراجع", n: 1, get: r => pct(r.net_max_dd_pct) }, { label: "الموافق", get: r => r.approved_by }, { label: "التاريخ", get: r => N(fmtDate(r.ts)) }], R.vault_history));
+  const promoted = R.promoted.length ? card("جاهزة لـ Paper trading", "خطط مكتوبة تنتظر قرارك. لا يُفتح أي حساب دون موافقتك.",
+    h("div", { class: "grid g3" }, R.promoted.map(p => h("div", { class: "spec", style: "border:1px solid var(--line);border-radius:8px;padding:12px" },
+      h("b", { style: "font-size:14px" }, p.description || p.hypothesis), h("span", { class: "mono", style: "font-size:11px;color:var(--muted)" }, p.hypothesis),
+      h("div", {}, h("span", {}, "الاتجاه"), h("span", {}, p.direction === "follow" ? "اتباع" : "عكس")),
+      h("div", {}, h("span", {}, "Sharpe في الخزنة"), N(num(p.vault_stats?.net_sharpe))),
+      h("div", {}, h("span", {}, "أقصى تراجع في الخزنة"), N(pct(p.vault_stats?.net_max_dd_pct))),
+      h("div", {}, h("span", {}, "المدة"), h("span", {}, "3 أشهر على الأقل")),
+      h("div", {}, h("span", {}, "المخاطرة"), h("span", {}, "0.5% لكل صفقة")),
+      h("p", { class: "sub", style: "margin:4px 0 0" }, "إيقاف تلقائي إذا تجاوز التراجع ", N(pct((p.vault_stats?.net_max_dd_pct ?? 0) * 1.5)), " أو انخفض Profit factor تحت ", N("1.0"), " بعد ", N("40"), " صفقة"))))) : null;
+  const fams = card("العائلات", null, table([{ label: "العائلة", get: f => h("span", { class: "mono", style: "font-size:12px" }, f.family) },
+    { label: "مختبرة", n: 1, get: f => int(f.tested) }, { label: "مرشّحة", n: 1, get: f => int(f.candidates) },
+    { label: "نسبة النجاة", n: 1, get: f => num(f.tested ? f.candidates / f.tested * 100 : 0, 1) + "%" }], R.families));
+  const runs = card("دورات المسح", null, table([{ label: "الدورة", get: r => h("span", { class: "mono", style: "font-size:12px" }, r.run_id) },
+    { label: "فرضيات", n: 1, get: r => int(r.tested_this_run) }, { label: "صدفة متوقعة", n: 1, get: r => num(r.expected_false_positives_at_5pct_without_correction, 1) },
+    { label: "بعد التصحيح", n: 1, get: r => int(r.bh_significant) }, { label: "مرشّحة", n: 1, get: r => int(r.candidates) }], R.runs));
+  return [tiles, h("div", { class: "grid g2" }, hist, pending), vault, promoted, h("div", { class: "grid g2" }, fams, runs)];
+}
+
+const STACK = [["survivor", "ناجية", "var(--good)"], ["weak", "ضعيفة", "var(--warn)"], ["fail", "لم تجتز", "var(--serious)"], ["blocked", "محظورة", "var(--crit)"], ["pending", "قيد الانتظار", "var(--axis)"]];
+const TIER = { 1: "أكاديمية", 2: "برمجية", 3: "مجتمعية" };
+function viewImports() {
+  const I = D.imports;
+  const board = card("أي المصادر تستحق وقتك؟", "نتيجة كل الاستراتيجيات المستوردة من كل مصدر. ابدأ من الطبقة الأكاديمية.",
+    h("div", { class: "legend", style: "margin-bottom:12px" }, STACK.map(([, l, c]) => h("span", {}, h("i", { class: "sw", style: `background:${c}` }), l))),
+    table([{ label: "المصدر", get: b => h("span", {}, h("b", {}, b.source), " ", h("span", { class: "badge" }, "طبقة " + b.tier + " · " + (TIER[b.tier] || ""))) },
+      { label: "التوزيع", get: b => { const t = Math.max(1, b.imported); const st = h("div", { class: "stack", role: "img", "aria-label": STACK.map(([k, l]) => `${l} ${b[k]}`).join("، ") });
+          STACK.forEach(([k, l, c]) => { if (b[k]) { const seg = h("i", { style: `width:${b[k] / t * 100}%;background:${c}` });
+            seg.addEventListener("pointermove", e => showTip(e, [h("b", {}, String(b[k])), h("span", {}, l)])); seg.addEventListener("pointerleave", hideTip); st.append(seg); } });
+          return st; } },
+      { label: "مستوردة", n: 1, get: b => int(b.imported) }, { label: "ناجية", n: 1, get: b => int(b.survivor) }, { label: "محظورة", n: 1, get: b => int(b.blocked) }], I.board));
+  const flags = card("العلامات الحمراء المكتشفة", "ما الذي يجعل استراتيجيات «ناجحة» تُحظر قبل الاختبار.",
+    I.flags.length ? h("ul", { class: "checks" }, I.flags.map(f => h("li", {}, f.severity === "BLOCK" ? ICON.block() : ICON.warn(),
+      h("div", {}, h("div", {}, f.why), h("div", { class: "thr mono" }, f.flag)), h("span", { class: "v num" }, "×" + f.count)))) : h("div", { class: "empty" }, "لا توجد علامات حمراء حتى الآن."));
+  const items = card("الاستراتيجيات المستوردة", "الادعاء الأصلي كما ورد، مقابل ما أظهره المختبر.",
+    table([{ label: "الاستراتيجية", get: i => h("div", {}, h("b", {}, i.name), h("div", { class: "sub" }, i.url ? h("a", { href: i.url, target: "_blank", rel: "noopener noreferrer" }, i.source) : i.source, " · ", i.lang || "")) },
+      { label: "الادعاء", get: i => i.claim ? h("span", { style: "color:var(--ink-2)" }, "«", i.claim, "»") : "—" },
+      { label: "الواقع", get: i => pill(i.verdict || i.status) },
+      { label: "أزواج ناجحة", n: 1, get: i => i.pairs_tested ? `${(i.pairs_passed || []).length}/${i.pairs_tested}` : "—" },
+      { label: "أفضل Sharpe", n: 1, get: i => num(i.best_wf_sharpe) },
+      { label: "الاستخدام", get: i => h("span", { class: "badge" }, i.usage === "personal-testing-only" ? "اختبار شخصي فقط" : (i.license || "—")) }], I.items));
+  return [h("div", { class: "tiles" },
+      tile("مستوردة", N(String(I.items.length))), tile("مختبرة", N(String(I.lifetime_tested)), `الصدفة المتوقعة ≈ ${num(I.lifetime_tested * .05, 1)}`),
+      tile("ناجية (3 أزواج فأكثر)", N(String(I.items.filter(i => i.verdict === "SURVIVOR").length))),
+      tile("محظورة", N(String(I.items.filter(i => i.status === "BLOCKED").length)), "Martingale · Grid · look-ahead")),
+    h("div", { class: "grid g2" }, board, flags), items,
+    h("div", { class: "note-box" }, "«ضعيفة» تعني نجاحًا على زوج أو زوجين فقط، وهذا على الأرجح صدفة. الترخيص الافتراضي اختبار شخصي فقط؛ أي استخدام تجاري يحتاج مراجعة رخصة كل سكربت.")];
+}
+
+function viewData() {
+  const P = D.pipeline, gen = new Date(D.generated);
+  const ageH = iso => iso ? (gen - new Date(iso)) / 36e5 : null;
+  const fresh = a => a == null ? ["wait", "—"] : a <= 72 ? ["pass", "محدّثة"] : a <= 24 * 7 ? ["warn", "متأخرة"] : ["fail", "قديمة"];
+  const lr = P.last_run || {};
+  return [h("div", { class: "tiles" },
+      tile("أزواج", N(String(P.pairs.length))), tile("إجمالي الشموع", N(int(P.pairs.reduce((a, p) => a + p.rows, 0)))),
+      tile("آخر تحديث للبيانات", N(fmtDT(lr.finished)), lr.mode ? `وضع ${lr.mode}` : null),
+      tile("أزواج فشل سحبها", N(String((lr.failed || []).length)), (lr.failed || []).join("، ") || "لا شيء")),
+    card("صحة البيانات لكل زوج", "الفجوات حول عطل نهاية السنة طبيعية. أي شمعة غير صالحة تستوجب إعادة السحب.",
+      table([{ label: "الزوج", get: p => N(p.pair) }, { label: "الإطار", get: p => N(p.tf) },
+        { label: "الحالة", get: p => { const [ic, l] = fresh(ageH(p.last)); return h("span", { class: "pill" }, ICON[ic](), l); } },
+        { label: "من", n: 1, get: p => fmtDate(p.first) }, { label: "آخر شمعة", n: 1, get: p => fmtDT(p.last) },
+        { label: "الشموع", n: 1, get: p => int(p.rows) }, { label: "فجوات > 3 أيام", n: 1, get: p => int(p.gaps_gt_3d) },
+        { label: "شموع غير صالحة", n: 1, get: p => p.bad_candles ? h("span", { style: "color:var(--crit-ink);font-weight:600" }, int(p.bad_candles)) : "0" },
+        { label: "الحجم", n: 1, get: p => num(p.size_mb, 1) + " MB" }], P.pairs))];
+}
+
+/* ---------------------------------------------------------------- render */
+function render() {
+  const app = $("#app");
+  try { localStorage.setItem("lab.tab", S.tab); } catch (e) {}
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === S.tab)));
+  const views = { overview: viewOverview, lab: viewLab, research: viewResearch, imports: viewImports, data: viewData };
+  const kids = [];
+  if (D.sample) kids.push(h("div", { class: "sample" }, "بيانات تجريبية مولّدة لعرض التصميم، وليست نتائج أسواق حقيقية. تُستبدل تلقائيًا بعد أول تشغيل على السيرفر."));
+  kids.push(...(views[S.tab] || viewOverview)().filter(Boolean));
+  app.replaceChildren(...kids);
+  hideTip();
+}
+
+function boot(data) {
+  D = data;
+  S.run = D.lab.latest;
+  const sel = $("#runSel");
+  sel.replaceChildren(...D.lab.runs.map(r => {
+    const strategies = r.leaderboard.length;
+    const label = `${fmtDT(r.meta.generated ? r.meta.generated.replace(" UTC", "Z").replace(" ", "T") : null)} · ${r.meta.tf || ""} · ${strategies === 1 ? "استيراد: " + stratName(r.leaderboard[0].strategy) : strategies + " استراتيجيات"}${r.meta.spread_mult && r.meta.spread_mult !== 1 ? " · spread ×" + r.meta.spread_mult : ""}`;
+    return h("option", { value: r.id, selected: r.id === S.run ? true : null }, label);
+  }));
+  if (!D.lab.runs.length) sel.append(h("option", {}, "لا توجد تشغيلات"));
+  sel.onchange = () => { S.run = sel.value; S.sel = null; render(); };
+  const last = D.pipeline.pairs.map(p => p.last).filter(Boolean).sort().at(-1);
+  const age = last ? (new Date(D.generated) - new Date(last)) / 36e5 : null;
+  const f = $("#fresh");
+  f.replaceChildren(h("i", { class: "dot", style: `background:${age == null ? "var(--muted)" : age <= 72 ? "var(--good)" : age <= 168 ? "var(--warn)" : "var(--crit)"}` }),
+    h("span", {}, "آخر شمعة ", N(fmtDT(last))));
+  document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => { S.tab = b.dataset.tab; render(); });
+  render();
+}
+
+(window.__LAB_DATA__ ? Promise.resolve(window.__LAB_DATA__) : fetch("data.json", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }))
+  .then(boot)
+  .catch(err => $("#app").replaceChildren(h("div", { class: "empty" }, "تعذّر تحميل data.json (", String(err.message || err), "). شغّل build_dashboard.py على السيرفر ثم حدّث الصفحة.")));
+</script>
