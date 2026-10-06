@@ -88,7 +88,8 @@ def download_year(pair: str, year: int, tf: str, price: str, force: bool = False
                 if tmp_backup and tmp_backup.exists():
                     tmp_backup.unlink()
                 return out
-            log(f"  ! empty file for {out.stem} (attempt {attempt}) — network block or no data")
+            log(f"  ! no data for {out.stem} — skipping (empty year / blocked)")
+            return None
         except subprocess.CalledProcessError as e:
             log(f"  ! attempt {attempt} failed for {out.stem}: {(e.stderr or '')[-300:]}")
         except subprocess.TimeoutExpired:
