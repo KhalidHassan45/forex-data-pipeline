@@ -42,6 +42,24 @@ CRITERIA = {
 }
 
 
+# ---- optional session filter (UTC hour ranges). Off by default.
+SESSIONS = {
+    "asia":        (23, 8),
+    "london":      (7, 16),
+    "ny":          (12, 21),
+    "overlap":     (12, 16),
+    "london_open": (7, 10),
+    "ny_open":     (12, 15),
+}
+SESSION = None  # set from --session in main()
+
+
+def session_mask(idx, name):
+    h0, h1 = SESSIONS[name]
+    h = pd.Series(idx.hour, index=idx)
+    return ((h >= h0) & (h < h1)) if h0 < h1 else ((h >= h0) | (h < h1))
+
+
 def load(pair: str, tf: str) -> pd.DataFrame:
     df = pd.read_parquet(DATA_DIR / "parquet" / f"{pair.lower()}_{tf}.parquet")
     df = df.set_index("ts").sort_index()
@@ -59,6 +77,8 @@ def evaluate(df, pair, sname, train_years, test_years, spread_mult):
     nets, helds, stress = {}, {}, {}
     for g in grid:
         raw = fn(df, **g)
+        if SESSION:
+            raw = raw.where(session_mask(df.index, SESSION), 0.0)
         for stop in STOP_GRID:
             p = dict(g, stop=stop)
             pos = apply_atr_stop(df, raw, stop)
@@ -147,7 +167,12 @@ def main() -> int:
     ap.add_argument("--test-years", type=int, default=1)
     ap.add_argument("--spread-mult", type=float, default=1.0)
     ap.add_argument("--out", default=str(DATA_DIR / "reports"))
+    ap.add_argument("--session", choices=list(SESSIONS), default=None,
+                    help="restrict trades to a UTC session window (london/ny/overlap/...)")
     a = ap.parse_args()
+
+    global SESSION
+    SESSION = a.session
 
     pq = DATA_DIR / "parquet"
     pairs = [p.upper() for p in a.pairs] if a.pairs else sorted(
