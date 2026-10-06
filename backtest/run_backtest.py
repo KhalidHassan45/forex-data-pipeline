@@ -94,12 +94,15 @@ def evaluate(df, pair, sname, train_years, test_years, spread_mult):
     row["param_changes"] = sum(1 for a, b in zip(chosen, chosen[1:]) if a["params"] != b["params"])
 
     fails = []
-    if wf_m["sharpe"] < CRITERIA["min_sharpe"]: fails.append(f"sharpe {wf_m['sharpe']}")
-    if wf_m["profit_factor"] < CRITERIA["min_profit_factor"]: fails.append(f"PF {wf_m['profit_factor']}")
-    if wf_m["trades"] < CRITERIA["min_trades"]: fails.append(f"trades {wf_m['trades']}")
-    if wf_m["max_dd_pct"] < CRITERIA["max_drawdown_pct"]: fails.append(f"DD {wf_m['max_dd_pct']}%")
-    if wf_m["years"] < CRITERIA["min_oos_years"]: fails.append(f"OOS years {wf_m['years']}")
-    if row["stress_sharpe"] < CRITERIA["min_cost_stress_sharpe"]: fails.append(f"stress sharpe {row['stress_sharpe']}")
+    if not wf_m or wf_m.get("sharpe") is None or pd.isna(wf_m.get("sharpe")):
+        fails.append("no walk-forward trades")
+    else:
+        if wf_m["sharpe"] < CRITERIA["min_sharpe"]: fails.append(f"sharpe {wf_m['sharpe']}")
+        if wf_m.get("profit_factor", 0) < CRITERIA["min_profit_factor"]: fails.append(f"PF {wf_m.get('profit_factor', 0)}")
+        if wf_m.get("trades", 0) < CRITERIA["min_trades"]: fails.append(f"trades {wf_m.get('trades', 0)}")
+        if wf_m.get("max_dd_pct", 0) < CRITERIA["max_drawdown_pct"]: fails.append(f"DD {wf_m.get('max_dd_pct', 0)}%")
+        if wf_m.get("years", 0) < CRITERIA["min_oos_years"]: fails.append(f"OOS years {wf_m.get('years', 0)}")
+        if row.get("stress_sharpe", 0) < CRITERIA["min_cost_stress_sharpe"]: fails.append(f"stress sharpe {row.get('stress_sharpe', 0)}")
     row["verdict"] = "PASS" if not fails else "FAIL"
     row["reasons"] = "; ".join(fails)
     return row, (1 + wf_net).cumprod()
