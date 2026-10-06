@@ -14,7 +14,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY fetch_forex.py run.sh schema.sql ./
-RUN chmod +x run.sh
+COPY backtest/ /app/backtest/
+RUN chmod +x run.sh /app/backtest/run_lab.sh
 
 ENV DATA_DIR=/data \
     PYTHONUNBUFFERED=1 \
