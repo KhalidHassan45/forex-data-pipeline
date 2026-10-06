@@ -180,6 +180,58 @@ def keltner_breakout(df, n=20, mult=1.5):
     return pd.Series(pos, index=df.index)
 
 
+def adx(df, n=14):
+    up = df["high"].diff()
+    dn = -df["low"].diff()
+    plus = ((up > dn) & (up > 0)) * up
+    minus = ((dn > up) & (dn > 0)) * dn
+    tr = pd.concat([df["high"] - df["low"], (df["high"] - df["close"].shift()).abs(),
+                    (df["low"] - df["close"].shift()).abs()], axis=1).max(axis=1)
+    atr_ = tr.ewm(alpha=1 / n, adjust=False).mean()
+    pdi = 100 * plus.ewm(alpha=1 / n, adjust=False).mean() / atr_.replace(0, np.nan)
+    mdi = 100 * minus.ewm(alpha=1 / n, adjust=False).mean() / atr_.replace(0, np.nan)
+    dx = 100 * (pdi - mdi).abs() / (pdi + mdi).replace(0, np.nan)
+    return dx.ewm(alpha=1 / n, adjust=False).mean()
+
+
+def triple_rsi(df, r1=5, r2=14, r3=28, lo=30, hi=70, exit=50):
+    """Triple RSI (The Forex Geek): all three RSIs oversold = long, overbought = short."""
+    a = rsi(df["close"], r1).to_numpy()
+    b = rsi(df["close"], r2).to_numpy()
+    d = rsi(df["close"], r3).to_numpy()
+    pos = np.zeros(len(a))
+    p = 0.0
+    for i in range(len(a)):
+        if np.isnan(d[i]):
+            continue
+        if p == 0:
+            if a[i] < lo and b[i] < lo and d[i] < lo:
+                p = 1.0
+            elif a[i] > hi and b[i] > hi and d[i] > hi:
+                p = -1.0
+        elif p > 0 and b[i] > exit:
+            p = 0.0
+        elif p < 0 and b[i] < exit:
+            p = 0.0
+        pos[i] = p
+    return pd.Series(pos, index=df.index)
+
+
+def adx_trend(df, fast=20, slow=50, adx_n=14, th=25):
+    """MA trend traded ONLY when ADX confirms a trend (regime filter)."""
+    c = df["close"]
+    f = c.ewm(span=fast, adjust=False).mean()
+    s = c.ewm(span=slow, adjust=False).mean()
+    a = adx(df, adx_n).to_numpy()
+    ff, ss = f.to_numpy(), s.to_numpy()
+    pos = np.zeros(len(c))
+    for i in range(len(c)):
+        if np.isnan(ff[i]) or np.isnan(a[i]):
+            continue
+        pos[i] = (1.0 if ff[i] > ss[i] else -1.0) if a[i] > th else 0.0
+    return pd.Series(pos, index=df.index)
+
+
 # ---------------------------------------------------------------- registry
 def _grid(**axes):
     keys = list(axes)
@@ -196,5 +248,7 @@ STRATEGIES = {
 STRATEGIES["macd_trend"] = (macd_trend, _grid(fast=[12], slow=[26, 50], sig=[9]), "trend")
 STRATEGIES["rsi_trend_filter"] = (rsi_trend_filter, _grid(n=[14], band=[25, 30], exit=[50], trend=[100, 200]), "reversion")
 STRATEGIES["keltner_breakout"] = (keltner_breakout, _grid(n=[20, 50], mult=[1.5, 2.0]), "trend")
+STRATEGIES["triple_rsi"] = (triple_rsi, _grid(lo=[25, 30], hi=[70, 75]), "reversion")
+STRATEGIES["adx_trend"] = (adx_trend, _grid(fast=[10, 20], slow=[50, 100], th=[20, 25]), "trend")
 INTRADAY_ONLY = {"london_breakout"}
 STOP_GRID = [0.0, 3.0]   # ATR multiples; 0 = no stop. Added to every strategy's grid.
