@@ -9,6 +9,12 @@ services:
       - FOREX_PAIRS=${FOREX_PAIRS:-eurusd gbpusd usdjpy usdchf audusd usdcad nzdusd eurgbp eurjpy gbpjpy xauusd}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      # live signal runner
+      - EVO_URL=${EVO_URL:-https://evo.biggrowth.io}
+      - EVO_INSTANCE=${EVO_INSTANCE:-BIG GROWTH}
+      - EVO_KEY=${EVO_KEY:-}
+      - SIGNAL_WA_NUMBER=${SIGNAL_WA_NUMBER:-}
+      - SIGNAL_CONFIG=${SIGNAL_CONFIG:-EURUSD:rsi_trend_filter,GBPUSD:keltner_breakout}
     volumes:
       - forex-data:/data
     networks:
