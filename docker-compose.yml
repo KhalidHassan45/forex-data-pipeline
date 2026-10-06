@@ -9,7 +9,6 @@ services:
       - FOREX_PAIRS=${FOREX_PAIRS:-eurusd gbpusd usdjpy usdchf audusd usdcad nzdusd eurgbp eurjpy gbpjpy xauusd}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
-      # live signal runner
       - EVO_URL=${EVO_URL:-https://evo.biggrowth.io}
       - EVO_INSTANCE=${EVO_INSTANCE:-BIG GROWTH}
       - EVO_KEY=${EVO_KEY:-}
@@ -19,7 +18,6 @@ services:
       - forex-data:/data
     networks:
       - coolify
-    # Protect the other client services on the same server
     deploy:
       resources:
         limits:
@@ -30,6 +28,24 @@ services:
       interval: 60s
       timeout: 5s
       retries: 3
+
+  lab-dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile.dashboard
+    restart: unless-stopped
+    environment:
+      - DASH_USER=${DASH_USER}
+      - DASH_PASS=${DASH_PASS}
+    volumes:
+      - forex-data:/data:ro
+    networks:
+      - coolify
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64m
 
 volumes:
   forex-data:
