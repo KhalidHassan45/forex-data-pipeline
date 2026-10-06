@@ -11,6 +11,8 @@ services:
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
     volumes:
       - forex-data:/data
+    networks:
+      - coolify
     # Protect the other client services on the same server
     deploy:
       resources:
@@ -25,3 +27,7 @@ services:
 
 volumes:
   forex-data:
+
+networks:
+  coolify:
+    external: true
