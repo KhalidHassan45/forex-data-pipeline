@@ -93,7 +93,19 @@ def main():
             if s_ and (best is None or s_ > best[0]):
                 best = (s_, win, ze)
             pos_sum += ps
-        ens_pos = pos_sum / (len(WINS) * len(ZES))
+        ens_raw = pos_sum / (len(WINS) * len(ZES))
+        ens_pos = np.zeros(len(ens_raw))
+        h = 0.0
+        for i in range(len(ens_raw)):
+            if ens_raw[i] > 0.5:
+                h = 1.0
+            elif ens_raw[i] < -0.5:
+                h = -1.0
+            elif h > 0 and ens_raw[i] < 0.1:
+                h = 0.0
+            elif h < 0 and ens_raw[i] > -0.1:
+                h = 0.0
+            ens_pos[i] = h
         spread, z, beta = zseries(df, 60)
         ens = ens_pos * np.diff(spread, prepend=spread[0]) - np.abs(np.diff(ens_pos, prepend=0.0)) * COST * (1 + np.abs(beta))
         ens_s = sharpe(ens[warm])
