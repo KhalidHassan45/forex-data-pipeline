@@ -1,0 +1,23 @@
+# Add under services: in docker-compose.yml, and `fx-state:` under volumes:.
+  fx-executor:
+    build:
+      context: .
+      dockerfile: executor/Dockerfile.executor
+    restart: unless-stopped
+    environment:
+      - FX_MODE=${FX_MODE:-practice}            # practice until Khalid decides otherwise
+      - OANDA_ACCOUNT_ID=${OANDA_ACCOUNT_ID}
+      - OANDA_TOKEN=${OANDA_TOKEN}
+      - FX_LIVE_ACK=${FX_LIVE_ACK:-}            # empty = live mode impossible
+      - FX_LIVE_ACCOUNTS=${FX_LIVE_ACCOUNTS:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+    volumes:
+      - forex-data:/mldata:ro                   # ml-lab models & paper evidence: READ-ONLY
+      - fx-state:/state                         # orders, approvals, audit trail
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 768m
+    # no ports, no Domain: the executor only makes outbound calls to the broker and Telegram
