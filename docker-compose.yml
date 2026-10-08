@@ -80,7 +80,8 @@ services:
       dockerfile: intake/Dockerfile.intake
     command: ["python", "runner.py"]
     restart: unless-stopped
-    network_mode: none
+    networks:
+      - lab-isolated
     volumes:
       - forex-data:/data:ro
       - lab-sandbox:/sandbox
@@ -89,7 +90,6 @@ services:
       - /tmp:size=512m
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
-    pids_limit: 128
     deploy:
       resources:
         limits: { cpus: "1.5", memory: 3g }
@@ -101,3 +101,5 @@ volumes:
 networks:
   coolify:
     external: true
+  lab-isolated:
+    internal: true
