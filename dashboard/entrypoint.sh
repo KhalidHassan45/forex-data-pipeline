@@ -2,6 +2,8 @@
 # Runs before nginx starts (nginx image executes /docker-entrypoint.d/*.sh).
 # Refuses to start without a password: the dashboard must never be public.
 set -eu
+# Load dashboard credentials from the mounted secrets volume (lab-dashboard only)
+[ -f /run/secrets/dash.env ] && { set -a; . /run/secrets/dash.env; set +a; }
 if [ -z "${DASH_USER:-}" ] || [ -z "${DASH_PASS:-}" ]; then
   echo "FATAL: DASH_USER and DASH_PASS must be set — refusing to serve the dashboard without a password" >&2
   exit 1
