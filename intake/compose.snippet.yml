@@ -1,0 +1,48 @@
+# Add under `services:` in forex-data-pipeline/docker-compose.yml, and add `lab-sandbox:` under `volumes:`.
+# Also add to the existing forex-worker service:   volumes: [ ..., lab-sandbox:/sandbox:ro ]
+
+  lab-api:
+    build:
+      context: .
+      dockerfile: intake/Dockerfile.intake
+    restart: unless-stopped
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - LAB_LLM_MODEL=${LAB_LLM_MODEL:-claude-sonnet-5-5}
+      - LAB_DAILY_LIMIT=${LAB_DAILY_LIMIT:-20}
+    volumes:
+      - lab-sandbox:/sandbox          # no market data, no forex-data volume
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 512m }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 60s
+      timeout: 5s
+
+  lab-runner:
+    build:
+      context: .
+      dockerfile: intake/Dockerfile.intake
+    command: ["python", "runner.py"]
+    restart: unless-stopped
+    network_mode: none               # no internet, no other containers — see SKILL.md if Coolify rejects this
+    volumes:
+      - forex-data:/data:ro          # market data, read-only
+      - lab-sandbox:/sandbox         # only place it can write
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 128
+    deploy:
+      resources:
+        limits: { cpus: "1.5", memory: 3g }
+    healthcheck:
+      disable: true
