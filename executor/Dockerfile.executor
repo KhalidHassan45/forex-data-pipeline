@@ -1,0 +1,14 @@
+# Built from the forex-data-pipeline repo root (needs ml/ and backtest/ next to executor/).
+FROM python:3.12-slim
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN useradd -m -u 10001 fx
+WORKDIR /app
+COPY executor/requirements.txt /tmp/req.txt
+RUN pip install --no-cache-dir -r /tmp/req.txt
+COPY backtest/ /app/backtest/
+COPY ml/ /app/ml/
+COPY executor/executor/ /app/executor/
+ENV PYTHONUNBUFFERED=1 TZ=UTC ML_CODE_DIR=/app/ml ML_DATA_DIR=/mldata FX_STATE_DIR=/state
+USER fx
+HEALTHCHECK --interval=10m --timeout=10s CMD python -c "import json,os,time,pathlib;f=pathlib.Path(os.environ['FX_STATE_DIR'])/os.environ.get('FX_MODE','practice')/'status.json';exit(0 if f.exists() and time.time()-f.stat().st_mtime<1800 else 1)"
+CMD ["python", "-m", "executor", "loop", "--interval", "300"]
