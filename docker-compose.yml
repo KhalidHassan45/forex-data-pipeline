@@ -57,6 +57,18 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - LAB_LLM_MODEL=${LAB_LLM_MODEL:-claude-sonnet-5-5}
       - LAB_DAILY_LIMIT=${LAB_DAILY_LIMIT:-20}
+      - SUPABASE_DB_URL=
+      - EVO_KEY=
+      - EVO_INSTANCE=
+      - EVO_URL=
+      - DASH_PASS=
+      - DASH_USER=
+      - TELEGRAM_BOT_TOKEN=
+      - TELEGRAM_CHAT_ID=
+      - SIGNAL_WA_NUMBER=
+      - SIGNAL_CONFIG=
+      - FOREX_PAIRS=
+      - FOREX_TF=
     volumes:
       - lab-sandbox:/sandbox
     networks:
@@ -80,8 +92,20 @@ services:
       dockerfile: intake/Dockerfile.intake
     command: ["python", "runner.py"]
     restart: unless-stopped
-    networks:
-      - lab-isolated
+    network_mode: none
+    environment:
+      - SUPABASE_DB_URL=
+      - EVO_KEY=
+      - EVO_INSTANCE=
+      - EVO_URL=
+      - DASH_PASS=
+      - DASH_USER=
+      - TELEGRAM_BOT_TOKEN=
+      - TELEGRAM_CHAT_ID=
+      - SIGNAL_WA_NUMBER=
+      - SIGNAL_CONFIG=
+      - FOREX_PAIRS=
+      - FOREX_TF=
     volumes:
       - forex-data:/data:ro
       - lab-sandbox:/sandbox
@@ -101,5 +125,3 @@ volumes:
 networks:
   coolify:
     external: true
-  lab-isolated:
-    internal: true
