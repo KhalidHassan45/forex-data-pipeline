@@ -1,8 +1,9 @@
 FROM python:3.12-slim
 
 # Node 20 for dukascopy-node + curl/flock for the wrapper
+# libgomp1 is required by LightGBM (OpenMP) on slim images
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl ca-certificates util-linux gnupg \
+ && apt-get install -y --no-install-recommends curl ca-certificates util-linux gnupg libgomp1 \
  && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
  && apt-get install -y --no-install-recommends nodejs \
  && npm install -g dukascopy-node@1 \
