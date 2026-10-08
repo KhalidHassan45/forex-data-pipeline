@@ -16,6 +16,7 @@ services:
       - SIGNAL_CONFIG=${SIGNAL_CONFIG:-EURUSD:rsi_trend_filter,GBPUSD:keltner_breakout}
     volumes:
       - forex-data:/data
+      - lab-sandbox:/sandbox:ro
     networks:
       - coolify
     deploy:
@@ -47,8 +48,55 @@ services:
           cpus: "0.25"
           memory: 64m
 
+  lab-api:
+    build:
+      context: .
+      dockerfile: intake/Dockerfile.intake
+    restart: unless-stopped
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - LAB_LLM_MODEL=${LAB_LLM_MODEL:-claude-sonnet-5-5}
+      - LAB_DAILY_LIMIT=${LAB_DAILY_LIMIT:-20}
+    volumes:
+      - lab-sandbox:/sandbox
+    networks:
+      - coolify
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 512m }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 60s
+      timeout: 5s
+
+  lab-runner:
+    build:
+      context: .
+      dockerfile: intake/Dockerfile.intake
+    command: ["python", "runner.py"]
+    restart: unless-stopped
+    network_mode: none
+    volumes:
+      - forex-data:/data:ro
+      - lab-sandbox:/sandbox
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 128
+    deploy:
+      resources:
+        limits: { cpus: "1.5", memory: 3g }
+
 volumes:
   forex-data:
+  lab-sandbox:
 
 networks:
   coolify:
