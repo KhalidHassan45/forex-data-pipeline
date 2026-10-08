@@ -1,0 +1,20 @@
+# One image, two services: lab-api (analyse uploads, never executes them) and lab-runner (sandboxed tests).
+# Build context = repository root (backtest/, importer/, intake/ side by side).
+FROM python:3.12-slim
+
+RUN useradd -u 10001 -m -s /usr/sbin/nologin lab \
+ && mkdir -p /sandbox && chown lab:lab /sandbox
+
+COPY intake/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
+
+COPY backtest/ /app/backtest/
+COPY importer/ /app/importer/
+COPY intake/ /app/intake/
+
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 SANDBOX_DIR=/sandbox MARKET_DATA_DIR=/data \
+    IMPORTER=/app/importer/import_tool.py BACKTEST_DIR=/app/backtest
+
+USER lab
+WORKDIR /app/intake
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
