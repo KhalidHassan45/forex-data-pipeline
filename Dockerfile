@@ -17,7 +17,8 @@ COPY fetch_forex.py run.sh schema.sql ./
 COPY backtest/ /app/backtest/
 COPY importer/ /app/importer/
 COPY dashboard/ /app/dashboard/
-RUN chmod +x run.sh /app/backtest/run_lab.sh /app/dashboard/build.sh
+COPY research/ /app/research/
+RUN chmod +x run.sh /app/backtest/run_lab.sh /app/dashboard/build.sh /app/research/research.sh
 
 ENV DATA_DIR=/data \
     PYTHONUNBUFFERED=1 \
