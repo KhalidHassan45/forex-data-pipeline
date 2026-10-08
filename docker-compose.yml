@@ -4,19 +4,12 @@ services:
     restart: unless-stopped
     environment:
       - DATA_DIR=/data
-      - SUPABASE_DB_URL=${SUPABASE_DB_URL}
       - FOREX_TF=${FOREX_TF:-h1}
       - FOREX_PAIRS=${FOREX_PAIRS:-eurusd gbpusd usdjpy usdchf audusd usdcad nzdusd eurgbp eurjpy gbpjpy xauusd}
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
-      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
-      - EVO_URL=${EVO_URL:-https://evo.biggrowth.io}
-      - EVO_INSTANCE=${EVO_INSTANCE:-BIG GROWTH}
-      - EVO_KEY=${EVO_KEY:-}
-      - SIGNAL_WA_NUMBER=${SIGNAL_WA_NUMBER:-}
-      - SIGNAL_CONFIG=${SIGNAL_CONFIG:-EURUSD:rsi_trend_filter,GBPUSD:keltner_breakout}
     volumes:
       - forex-data:/data
       - lab-sandbox:/sandbox:ro
+      - forex-secrets:/run/secrets:ro
     networks:
       - coolify
     deploy:
@@ -35,11 +28,9 @@ services:
       context: .
       dockerfile: dashboard/Dockerfile.dashboard
     restart: unless-stopped
-    environment:
-      - DASH_USER=${DASH_USER}
-      - DASH_PASS=${DASH_PASS}
     volumes:
       - forex-data:/data:ro
+      - dash-secrets:/run/secrets:ro
     networks:
       - coolify
     deploy:
@@ -57,18 +48,6 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - LAB_LLM_MODEL=${LAB_LLM_MODEL:-claude-sonnet-5-5}
       - LAB_DAILY_LIMIT=${LAB_DAILY_LIMIT:-20}
-      - SUPABASE_DB_URL=
-      - EVO_KEY=
-      - EVO_INSTANCE=
-      - EVO_URL=
-      - DASH_PASS=
-      - DASH_USER=
-      - TELEGRAM_BOT_TOKEN=
-      - TELEGRAM_CHAT_ID=
-      - SIGNAL_WA_NUMBER=
-      - SIGNAL_CONFIG=
-      - FOREX_PAIRS=
-      - FOREX_TF=
     volumes:
       - lab-sandbox:/sandbox
     networks:
@@ -93,19 +72,6 @@ services:
     command: ["python", "runner.py"]
     restart: unless-stopped
     network_mode: none
-    environment:
-      - SUPABASE_DB_URL=
-      - EVO_KEY=
-      - EVO_INSTANCE=
-      - EVO_URL=
-      - DASH_PASS=
-      - DASH_USER=
-      - TELEGRAM_BOT_TOKEN=
-      - TELEGRAM_CHAT_ID=
-      - SIGNAL_WA_NUMBER=
-      - SIGNAL_CONFIG=
-      - FOREX_PAIRS=
-      - FOREX_TF=
     volumes:
       - forex-data:/data:ro
       - lab-sandbox:/sandbox
@@ -121,6 +87,8 @@ services:
 volumes:
   forex-data:
   lab-sandbox:
+  forex-secrets:
+  dash-secrets:
 
 networks:
   coolify:
