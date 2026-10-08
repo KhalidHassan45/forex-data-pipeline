@@ -21,6 +21,7 @@ from pathlib import Path
 import pandas as pd
 
 DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
+SANDBOX = Path(os.getenv("SANDBOX_DIR", "/sandbox"))   # uploads tested by lab-runner (read-only here)
 OUT = DATA_DIR / "dashboard"
 HERE = Path(__file__).resolve().parent
 
@@ -116,12 +117,22 @@ def downsample(eq: pd.Series, n=260):
 
 
 def lab(keep):
-    root = DATA_DIR / "reports"
-    runs = sorted([d for d in root.glob("*") if (d / "results.csv").exists()], reverse=True)[:keep]
+    dirs = [d for root in (DATA_DIR / "reports", SANDBOX / "reports") if root.exists()
+            for d in root.glob("*") if (d / "results.csv").exists()]
+    dirs.sort(key=lambda d: d.name, reverse=True)
     out = {"runs": [], "latest": None}
-    for d in runs:
+    n_full = n_single = 0
+    for d in dirs:
+        try:
+            res = pd.read_csv(d / "results.csv")
+        except Exception:
+            continue
+        single = res["strategy"].nunique() <= 2
+        if (single and n_single >= 30) or (not single and n_full >= keep):
+            continue
+        n_single += single
+        n_full += not single
         summ = jload(d / "summary.json", {}) or {}
-        res = pd.read_csv(d / "results.csv")
         res = res.astype(object).where(pd.notna(res), None)
         rows = [{k: clean(v) for k, v in r.items()} for r in res.to_dict("records")]
         passes = Counter(r["strategy"] for r in rows if r.get("verdict") == "PASS")
@@ -212,7 +223,7 @@ def research():
 
 # ---------------------------------------------------------------- imports
 def imports():
-    reg = jl(DATA_DIR / "imports" / "registry.jsonl")
+    reg = jl(DATA_DIR / "imports" / "registry.jsonl") + jl(SANDBOX / "imports" / "registry.jsonl")
     items = {}
     for r in reg:
         it = items.setdefault(r["name"], {"name": r["name"]})
@@ -251,6 +262,24 @@ def imports():
     }
 
 
+SUB_FIELDS = ("id", "filename", "kind", "lang", "route", "name", "source", "url", "claim", "created", "state",
+              "timeline", "summary_ar", "ambiguities", "red_flags", "static_flags", "describe", "error", "confidence",
+              "reason_unsupported", "import_name", "verdict", "pairs_passed", "pairs_tested", "results",
+              "best_wf_sharpe", "report", "model")
+
+
+def submissions(limit=40):
+    inbox = SANDBOX / "inbox"
+    if not inbox.exists():
+        return []
+    out = []
+    for d in sorted(inbox.iterdir(), reverse=True)[:limit]:
+        st = jload(d / "status.json")
+        if st:
+            out.append({k: st.get(k) for k in SUB_FIELDS if k in st})
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--keep-runs", type=int, default=6)
@@ -260,6 +289,7 @@ def main():
         "generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "sample": os.getenv("DASHBOARD_SAMPLE") == "1",
         "pipeline": pipeline(), "lab": lab(a.keep_runs), "research": research(), "imports": imports(),
+        "submissions": submissions(),
     }
     tmp = OUT / "data.json.tmp"
     tmp.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":"), default=str))
