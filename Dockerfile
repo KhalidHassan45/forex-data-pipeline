@@ -18,7 +18,8 @@ COPY backtest/ /app/backtest/
 COPY importer/ /app/importer/
 COPY dashboard/ /app/dashboard/
 COPY research/ /app/research/
-RUN chmod +x run.sh /app/backtest/run_lab.sh /app/dashboard/build.sh /app/research/research.sh
+COPY ml/ /app/ml/
+RUN chmod +x run.sh /app/backtest/run_lab.sh /app/dashboard/build.sh /app/research/research.sh /app/ml/ml.sh /app/ml/tests/run_tests.sh
 
 ENV DATA_DIR=/data \
     PYTHONUNBUFFERED=1 \
