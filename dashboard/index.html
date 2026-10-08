@@ -179,6 +179,45 @@ table.t{width:100%;border-collapse:collapse;font-size:13px}
 .spec{display:grid;gap:6px;font-size:13px}
 .spec div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dashed var(--line);padding-bottom:4px}
 .spec div span:first-child{color:var(--muted)}
+
+/* upload */
+.drop{border:1.5px dashed var(--axis);border-radius:var(--r);padding:26px 18px;display:grid;place-items:center;gap:8px;text-align:center;background:var(--sunk);cursor:pointer;transition:border-color .15s,background .15s}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop svg{width:34px;height:34px;color:var(--accent)}
+.drop b{font-size:15px}
+.drop .sub{max-width:52ch}
+.drop .picked{font-family:var(--mono);font-size:13px;color:var(--ink)}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px}
+.field{display:grid;gap:4px;font-size:12px;color:var(--ink-2);min-width:0}
+.field input,.field select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;color:var(--ink);min-width:0;width:100%}
+.btn{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:9px 18px;font-weight:600;cursor:pointer;font-size:14px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+:root[data-theme="dark"] .btn{color:#0e1013}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn{color:#0e1013}}
+.routes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:10px}
+.route{border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:4px;font-size:13px;align-content:start}
+.route b{font-size:13px}
+.route .ext{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.steps{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0 2px;padding:0;list-style:none}
+.steps li{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);padding:3px 8px 3px 6px;border-radius:999px;background:var(--sunk)}
+.steps li i{width:7px;height:7px;border-radius:50%;background:var(--axis);display:block}
+.steps li.done{color:var(--ink-2)} .steps li.done i{background:var(--good)}
+.steps li.now{color:var(--ink);font-weight:600;background:var(--accent-soft)} .steps li.now i{background:var(--accent);animation:pulse 1.2s infinite}
+.steps li.bad{color:var(--crit-ink);font-weight:600} .steps li.bad i{background:var(--crit)}
+@keyframes pulse{50%{opacity:.3}}
+.sub-card{border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:grid;gap:10px;background:var(--surface)}
+.sub-head{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between}
+.sub-head .fn{font-weight:600;overflow-wrap:anywhere}
+.rules{display:grid;gap:6px}
+.rules div{display:grid;grid-template-columns:minmax(0,120px) minmax(0,1fr);gap:10px;font-size:13px;align-items:baseline}
+.rules code{font-family:var(--mono);font-size:12px;background:var(--sunk);padding:3px 8px;border-radius:5px;direction:ltr;unicode-bidi:isolate;overflow-wrap:anywhere;text-align:left}
+.amb{margin:0;padding-inline-start:18px;font-size:13px;color:var(--ink-2)}
+.err{color:var(--crit-ink);font-size:13px;background:var(--sunk);padding:8px 12px;border-radius:6px;border-inline-start:3px solid var(--crit)}
+.toast{font-size:13px;padding:8px 12px;border-radius:8px;background:var(--accent-soft)}
+.legend svg,.sub-card .legend svg{width:16px;height:16px;flex:none}
+.sub-card,.sub-card>*{min-width:0;max-width:100%}
+.rules code{word-break:break-word}
+.drop{min-width:0;max-width:100%}
 [hidden]{display:none!important}
 @media (max-width:560px){
   .hero-num{font-size:44px}
@@ -205,6 +244,7 @@ table.t{width:100%;border-collapse:collapse;font-size:13px}
     <nav class="tabs" role="tablist" aria-label="الأقسام">
       <button role="tab" id="t-overview" aria-selected="true" data-tab="overview">نظرة عامة</button>
       <button role="tab" id="t-lab" aria-selected="false" data-tab="lab">الاستراتيجيات</button>
+      <button role="tab" id="t-upload" aria-selected="false" data-tab="upload">إضافة استراتيجية</button>
       <button role="tab" id="t-research" aria-selected="false" data-tab="research">البحث والخزنة</button>
       <button role="tab" id="t-imports" aria-selected="false" data-tab="imports">الاستيراد</button>
       <button role="tab" id="t-data" aria-selected="false" data-tab="data">البيانات</button>
@@ -677,12 +717,133 @@ function viewData() {
         { label: "الحجم", n: 1, get: p => num(p.size_mb, 1) + " MB" }], P.pairs))];
 }
 
+
+/* ---------------------------------------------------------------- upload (needs lab-api on the server) */
+const STAGE = [["received", "استُلم"], ["analyzing", "تحليل الملف"], ["translated", "تحويل إلى قواعد"], ["queued", "في الانتظار"],
+  ["checking", "فحص الأمان والغش"], ["testing", "اختبار walk-forward"], ["done", "الحكم"]];
+const BAD = { blocked: "محظورة", rejected: "مرفوض", unsupported: "لا يمكن التعبير عنها", failed: "فشل" };
+const KIND = { excel: "Excel", csv: "CSV", pdf: "PDF", docx: "Word", pine: "Pine Script", mql4: "MQL4", mql5: "MQL5", python: "Python", text: "نص", json: "JSON" };
+const U = { api: null, items: null, file: null, busy: false, msg: null, timer: null, llm: null, quota: null, form: { source: "other", url: "", claim: "", license: "" } };
+const keep = k => ({ value: U.form[k], oninput: e => { U.form[k] = e.target.value; } });
+const SRC = ["other", "quantpedia", "ssrn", "arxiv", "quantocracy", "quantconnect", "tradingview", "mql5", "github", "forexfactory", "babypips", "quantifiedstrategies"];
+
+async function apiList() {
+  try {
+    const r = await fetch("api/submissions", { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json(); U.api = true; U.items = j.items; U.llm = j.llm; U.quota = [j.used_today, j.daily_limit];
+  } catch (e) { U.api = false; U.items = D.submissions || []; }
+  schedulePoll();
+}
+function schedulePoll() {
+  clearTimeout(U.timer);
+  const pending = (U.items || []).some(x => !["done", ...Object.keys(BAD)].includes(x.state));
+  if (U.api && pending) U.timer = setTimeout(async () => { await apiList(); if (S.tab === "upload" && !document.activeElement?.closest?.("form")) render(); }, 4000);
+}
+async function submitUpload(form) {
+  if (!U.file || U.busy) return;
+  U.busy = true; U.msg = null; render();
+  const fd = new FormData();
+  fd.append("file", U.file);
+  ["source", "url", "claim", "license"].forEach(k => fd.append(k, form.querySelector("#up-" + k).value.trim()));
+  try {
+    const r = await fetch("api/submissions", { method: "POST", body: fd, headers: { "X-Lab-Request": "1" } });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.detail || ("HTTP " + r.status));
+    U.file = null; U.form = { source: "other", url: "", claim: "", license: "" }; U.msg = ["ok", "تم الاستلام. يبدأ التحليل الآن، وتتحدث الحالة هنا تلقائيًا."];
+  } catch (e) { U.msg = ["err", "لم يُرفع الملف: " + e.message]; }
+  U.busy = false;
+  await apiList(); render();
+}
+
+function stepper(st) {
+  const bad = BAD[st.state];
+  const reached = new Set((st.timeline || []).map(t => t.state));
+  const curIdx = STAGE.findIndex(([k]) => k === st.state);
+  return h("ol", { class: "steps", "aria-label": "مراحل المعالجة" }, STAGE.map(([k, l], i) => {
+    let cls = reached.has(k) ? "done" : "";
+    if (k === st.state && k !== "done") cls = "now";
+    if (k === "done" && st.state === "done") cls = "done";
+    return h("li", { class: cls }, h("i"), l);
+  }), bad ? h("li", { class: "bad" }, h("i"), bad) : null);
+}
+
+function subCard(st) {
+  const verdictPill = st.state === "done" ? pill(st.verdict) : BAD[st.state] ? pill(st.state === "blocked" ? "BLOCKED" : "FAIL") : h("span", { class: "chip" }, "جارٍ…");
+  const desc = st.describe;
+  const res = (st.results || []).slice().sort((a, b) => (b.wf_sharpe ?? -9) - (a.wf_sharpe ?? -9));
+  const runId = st.report && D.lab.runs.some(r => r.id === st.report) ? st.report : null;
+  return h("article", { class: "sub-card" },
+    h("div", { class: "sub-head" },
+      h("div", {}, h("div", { class: "fn" }, st.filename), h("div", { class: "sub" }, KIND[st.kind] || st.kind || "", st.source ? " · " + st.source : "", " · ", N(fmtDT(st.created)), st.import_name ? h("span", {}, " · ", h("span", { class: "mono" }, st.import_name)) : null)),
+      verdictPill),
+    stepper(st),
+    st.summary_ar ? h("p", { style: "margin:0" }, st.summary_ar) : null,
+    st.claim ? h("p", { class: "sub", style: "margin:0" }, "الادعاء الأصلي: «", st.claim, "»") : null,
+    desc ? h("div", { class: "rules" }, desc.rules.map(r => h("div", {}, h("span", { style: "color:var(--muted)" }, r.label), h("code", {}, r.rule))),
+      desc.indicators.length ? h("div", {}, h("span", { style: "color:var(--muted)" }, "المؤشرات"), h("code", {}, desc.indicators.map(i => `${i.name}: ${i.def}`).join("  ·  "))) : null,
+      Object.keys(desc.params || {}).length ? h("div", {}, h("span", { style: "color:var(--muted)" }, "المعاملات"), h("code", {}, JSON.stringify(desc.params))) : null,
+      desc.stop_atr ? h("div", {}, h("span", { style: "color:var(--muted)" }, "وقف الخسارة"), h("code", {}, `${desc.stop_atr} × ATR`)) : null) : null,
+    (st.ambiguities || []).length ? h("div", {}, h("div", { class: "eyebrow" }, "افتراضات اتُّخذت أثناء التحويل — راجعها"), h("ul", { class: "amb" }, st.ambiguities.map(a => h("li", {}, a)))) : null,
+    [...(st.red_flags || []), ...(st.static_flags || [])].length ? h("div", { class: "legend" }, [...(st.red_flags || []).map(f => [f.severity || "WARN", f.why || f.flag]), ...(st.static_flags || []).map(f => [f.severity, f.why])]
+      .map(([sev, why]) => h("span", {}, sev === "BLOCK" ? ICON.block() : ICON.warn(), why))) : null,
+    st.reason_unsupported ? h("div", { class: "err" }, st.reason_unsupported) : null,
+    st.error ? h("div", { class: "err" }, st.error) : null,
+    res.length ? h("div", {}, h("div", { class: "eyebrow", style: "margin-bottom:6px" }, `النتيجة على ${res.length} زوجًا — نجحت على ${(st.pairs_passed || []).length}`),
+      table([{ label: "الزوج", get: r => N(r.pair) }, { label: "الحكم", get: r => pill(r.verdict) }, { label: "Sharpe WF", n: 1, get: r => num(r.wf_sharpe) },
+        { label: "PF", n: 1, get: r => num(r.wf_profit_factor) }, { label: "أقصى تراجع", n: 1, get: r => pct(r.wf_max_dd_pct) }, { label: "صفقات", n: 1, get: r => int(r.wf_trades) }], res.slice(0, 6)),
+      res.length > 6 ? h("p", { class: "sub" }, "أفضل 6 أزواج. الجدول الكامل في المختبر.") : null) : null,
+    runId ? h("div", {}, h("button", { class: "linkbtn", onclick: () => { S.run = runId; S.tab = "lab"; S.family = "all"; S.sel = null; $("#runSel").value = runId; render(); } }, "افتح التفاصيل في المختبر")) :
+      st.state === "done" ? h("p", { class: "sub" }, "ستظهر التفاصيل الكاملة في تبويب الاستراتيجيات بعد التحديث التالي للوحة (خلال 15 دقيقة).") : null);
+}
+
+function viewUpload() {
+  if (U.items === null) { apiList().then(() => S.tab === "upload" && render()); return [h("div", { class: "empty" }, "جارٍ التحقق من خدمة الرفع…")]; }
+  const off = U.api === false;
+  const fileInput = h("input", { type: "file", id: "up-file", hidden: true, accept: ".xlsx,.xlsm,.csv,.pdf,.docx,.pine,.mq4,.mq5,.mqh,.py,.txt,.md,.json",
+    onchange: e => { U.file = e.target.files[0] || null; U.msg = null; render(); } });
+  const drop = h("label", { class: "drop", for: "up-file" },
+    s("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": 1.6, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" },
+      s("path", { d: "M12 16V4M7 9l5-5 5 5" }), s("path", { d: "M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" })),
+    U.file ? h("span", { class: "picked" }, U.file.name, " · ", (U.file.size / 1024).toFixed(0), " KB") : h("b", {}, "اسحب ملف الاستراتيجية هنا أو اضغط للاختيار"),
+    h("span", { class: "sub" }, "Excel · PDF · Word · Pine · MQL4/5 · Python · نص — حتى 10MB"));
+  ["dragover", "dragenter"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if (f) { U.file = f; U.msg = null; render(); } });
+
+  const form = h("form", { class: "card", style: "display:grid;gap:14px", onsubmit: e => { e.preventDefault(); submitUpload(e.target); } },
+    h("div", { class: "head", style: "margin:0" }, h("div", {}, h("h2", {}, "إضافة استراتيجية من ملف"), h("p", { class: "sub" }, "يُحلَّل الملف ويُحوَّل إلى قواعد، ثم يُفحص ويُختبر بنفس معايير المختبر.")),
+      off ? null : h("a", { class: "linkbtn", href: "api/template.xlsx", style: "text-decoration:none" }, "تنزيل قالب Excel")),
+    off ? h("div", { class: "note-box" }, "خدمة الرفع غير متصلة. تعمل بعد تثبيت lab-api و lab-runner على السيرفر؛ المعروض أدناه أمثلة.") : null,
+    fileInput, drop,
+    h("div", { class: "form-grid" },
+      h("label", { class: "field", for: "up-source" }, "المصدر", h("select", { id: "up-source", onchange: e => { U.form.source = e.target.value; } }, SRC.map(x => h("option", { value: x, selected: U.form.source === x ? true : null }, x === "other" ? "آخر / خاص بي" : x)))),
+      h("label", { class: "field", for: "up-url" }, "رابط المصدر (اختياري)", h("input", { id: "up-url", type: "url", placeholder: "https://", dir: "ltr", ...keep("url") })),
+      h("label", { class: "field", for: "up-claim" }, "الأداء المعلن (اختياري)", h("input", { id: "up-claim", maxlength: 300, placeholder: "مثال: 70% صفقات رابحة", ...keep("claim") })),
+      h("label", { class: "field", for: "up-license" }, "الترخيص (اختياري)", h("input", { id: "up-license", maxlength: 80, placeholder: "MIT، MPL-2.0 …", dir: "ltr", ...keep("license") }))),
+    h("div", { style: "display:flex;flex-wrap:wrap;gap:12px;align-items:center" },
+      h("button", { class: "btn", type: "submit", disabled: off || !U.file || U.busy ? true : null }, U.busy ? "جارٍ الرفع…" : "ارفع وابدأ التحليل"),
+      U.quota ? h("span", { class: "sub" }, "الاستخدام اليوم ", N(`${U.quota[0]}/${U.quota[1]}`)) : null,
+      U.api && U.llm === false ? h("span", { class: "sub" }, "تحليل PDF والكود يحتاج مفتاح Claude API على السيرفر؛ قالب Excel يعمل بدونه.") : null),
+    U.msg ? h("div", { class: U.msg[0] === "err" ? "err" : "toast", role: "status" }, U.msg[1]) : null);
+
+  const routes = card("ماذا يحدث لكل نوع ملف؟", null, h("div", { class: "routes" },
+    h("div", { class: "route" }, h("b", {}, "قالب Excel"), h("span", { class: "ext" }, ".xlsx"), "تكتب القواعد بنفسك في القالب، فتُحوَّل مباشرة دون ذكاء اصطناعي. الأدق والأسرع."),
+    h("div", { class: "route" }, h("b", {}, "PDF · Word · نص · Pine · MQL · Excel حر"), h("span", { class: "ext" }, ".pdf .docx .txt .pine .mq4 .mq5 .csv"), "يقرأ Claude الملف ويستخرج القواعد إلى مواصفة منظّمة، ويذكر كل افتراض اتخذه. لا يُكتب أي كود قابل للتنفيذ."),
+    h("div", { class: "route" }, h("b", {}, "Python بصيغة المختبر"), h("span", { class: "ext" }, ".py (STRATEGY = …)"), "يُشغَّل كما هو داخل حاوية معزولة بلا إنترنت ولا مفاتيح، وتقرأ البيانات فقط."),
+    h("div", { class: "route" }, h("b", {}, "محظور تلقائيًا"), h("span", { class: "ext" }, "Martingale · Grid · look-ahead"), "يُرفض قبل الاختبار مع ذكر السبب، ولا يستهلك تحليلًا.")));
+
+  const list = (U.items || []);
+  return [form, routes, card("الملفات المرفوعة", list.length ? `${list.length} ملفًا — الأحدث أولًا` : null,
+    list.length ? h("div", { style: "display:grid;gap:12px" }, list.map(subCard)) : h("div", { class: "empty" }, "لم تُرفع أي استراتيجية بعد."))];
+}
+
 /* ---------------------------------------------------------------- render */
 function render() {
   const app = $("#app");
   try { localStorage.setItem("lab.tab", S.tab); } catch (e) {}
   document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === S.tab)));
-  const views = { overview: viewOverview, lab: viewLab, research: viewResearch, imports: viewImports, data: viewData };
+  const views = { overview: viewOverview, lab: viewLab, upload: viewUpload, research: viewResearch, imports: viewImports, data: viewData };
   const kids = [];
   if (D.sample) kids.push(h("div", { class: "sample" }, "بيانات تجريبية مولّدة لعرض التصميم، وليست نتائج أسواق حقيقية. تُستبدل تلقائيًا بعد أول تشغيل على السيرفر."));
   kids.push(...(views[S.tab] || viewOverview)().filter(Boolean));
