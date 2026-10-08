@@ -280,6 +280,41 @@ def submissions(limit=40):
     return out
 
 
+# ---------------------------------------------------------------- ml-lab:v1
+def ml():
+    M = DATA_DIR / "ml"
+    reg = jl(M / "registry.jsonl")
+    trains = [r for r in reg if r.get("event") == "TRAIN"]
+    vaulted = {r["id"] for r in reg if r.get("event") == "VAULT"}
+    verdicts = [r for r in reg if r.get("event") in ("VAULT_PASS", "VAULT_FAIL")]
+    keep = ("id", "pair", "ts", "status", "fails", "why", "net_trades", "net_sharpe", "net_profit_factor",
+            "net_max_dd_pct", "net_win_rate", "dsr", "null_sharpe", "edge_over_null", "stability", "stress_sharpe",
+            "n_trials", "by_year_pct", "top_features", "label_dist", "feature_version", "quantile", "meta")
+    rows = []
+    for r in trains[::-1][:60]:
+        x = {k: clean(r.get(k)) if not isinstance(r.get(k), dict) else r.get(k) for k in keep}
+        x["vaulted"] = r["id"] in vaulted
+        if r.get("status") == "CANDIDATE" or len(rows) < 8:
+            x["equity"] = jload(Path(r.get("run_dir", "")) / "equity.json", []) or []
+        rows.append(x)
+    gates = defaultdict(int)
+    for r in trains:
+        for f in filter(None, (r.get("fails") or "").split(",")):
+            gates[f.split("=")[0]] += 1
+    certs = jload(M / "leakage_cert.json", {}) or {}
+    cert = sorted(certs.values(), key=lambda c: c.get("ts", ""))[-1] if certs else None
+    paper = jload(M / "paper" / "status.json", {}) or {}
+    return {
+        "lifetime": len(trains), "candidates": sum(r.get("status") == "CANDIDATE" for r in trains),
+        "pending": [x for x in rows if x["status"] == "CANDIDATE" and not x["vaulted"]],
+        "rows": rows, "gates": dict(sorted(gates.items(), key=lambda kv: -kv[1])),
+        "vault": [{k: clean(r.get(k)) for k in ("id", "event", "ts", "approved_by", "t", "net_sharpe",
+                                                 "net_profit_factor", "net_max_dd_pct", "net_trades", "why")}
+                  for r in verdicts][::-1],
+        "cert": cert, "paper": paper.get("models", []), "paper_ts": paper.get("ts"),
+    }
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--keep-runs", type=int, default=6)
@@ -289,7 +324,7 @@ def main():
         "generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "sample": os.getenv("DASHBOARD_SAMPLE") == "1",
         "pipeline": pipeline(), "lab": lab(a.keep_runs), "research": research(), "imports": imports(),
-        "submissions": submissions(),
+        "submissions": submissions(), "ml": ml(),
     }
     tmp = OUT / "data.json.tmp"
     tmp.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":"), default=str))
