@@ -84,12 +84,39 @@ services:
       resources:
         limits: { cpus: "1.5", memory: 3g }
 
+  fx-executor:
+    build:
+      context: .
+      dockerfile: executor/Dockerfile.executor
+    restart: unless-stopped
+    environment:
+      - FX_MODE=${FX_MODE:-practice}
+      - OANDA_ACCOUNT_ID=${OANDA_ACCOUNT_ID}
+      - OANDA_TOKEN=${OANDA_TOKEN}
+      - FX_LIVE_ACK=${FX_LIVE_ACK:-}
+      - FX_LIVE_ACCOUNTS=${FX_LIVE_ACCOUNTS:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+    volumes:
+      - forex-data:/mldata:ro
+      - fx-state:/state
+    networks:
+      - coolify
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 768m
+
 volumes:
   forex-data:
   lab-sandbox:
   forex-secrets:
   dash-secrets:
+  fx-state:
 
 networks:
   coolify:
     external: true
+  lab-isolated:
+    internal: true
