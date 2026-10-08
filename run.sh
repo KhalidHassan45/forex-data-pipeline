@@ -9,6 +9,10 @@ set -uo pipefail
 DATA_DIR="${DATA_DIR:-/data}"
 LOG_DIR="$DATA_DIR/logs"
 mkdir -p "$LOG_DIR"
+
+# Load secrets from the mounted secrets volume (only forex-worker has this mount)
+[ -f /run/secrets/forex.env ] && { set -a; . /run/secrets/forex.env; set +a; }
+
 MODE="${1:-update}"; shift || true
 
 if [[ "$MODE" == "status" ]]; then
