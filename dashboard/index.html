@@ -246,6 +246,7 @@ table.t{width:100%;border-collapse:collapse;font-size:13px}
       <button role="tab" id="t-lab" aria-selected="false" data-tab="lab">الاستراتيجيات</button>
       <button role="tab" id="t-upload" aria-selected="false" data-tab="upload">إضافة استراتيجية</button>
       <button role="tab" id="t-research" aria-selected="false" data-tab="research">البحث والخزنة</button>
+      <button role="tab" id="t-ml" aria-selected="false" data-tab="ml">التعلّم الآلي</button>
       <button role="tab" id="t-imports" aria-selected="false" data-tab="imports">الاستيراد</button>
       <button role="tab" id="t-data" aria-selected="false" data-tab="data">البيانات</button>
     </nav>
@@ -654,7 +655,7 @@ function viewResearch() {
   const promoted = R.promoted.length ? card("جاهزة لـ Paper trading", "خطط مكتوبة تنتظر قرارك. لا يُفتح أي حساب دون موافقتك.",
     h("div", { class: "grid g3" }, R.promoted.map(p => h("div", { class: "spec", style: "border:1px solid var(--line);border-radius:8px;padding:12px" },
       h("b", { style: "font-size:14px" }, p.description || p.hypothesis), h("span", { class: "mono", style: "font-size:11px;color:var(--muted)" }, p.hypothesis),
-      h("div", {}, h("span", {}, "الاتجاه"), h("span", {}, p.direction === "follow" ? "اتباع" : "عكس")),
+      h("div", {}, h("span", {}, "الاتجاه"), h("span", {}, p.kind === "ml" ? "نموذج ML" : p.direction === "follow" ? "اتباع" : "عكس")),
       h("div", {}, h("span", {}, "Sharpe في الخزنة"), N(num(p.vault_stats?.net_sharpe))),
       h("div", {}, h("span", {}, "أقصى تراجع في الخزنة"), N(pct(p.vault_stats?.net_max_dd_pct))),
       h("div", {}, h("span", {}, "المدة"), h("span", {}, "3 أشهر على الأقل")),
@@ -839,11 +840,62 @@ function viewUpload() {
 }
 
 /* ---------------------------------------------------------------- render */
+/* ---------------------------------------------------------------- ml-lab:v1 */
+const ML_STATUS = { CANDIDATE: ["warn", "مرشّح"], REJECTED: ["fail", "مرفوض"], PAPER_ACTIVE: ["pass", "Paper نشط"],
+  PAPER_PAUSED: ["block", "Paper موقوف"], AWAITING_KHALID_APPROVAL_FOR_PAPER_TRADING: ["wait", "بانتظار موافقتك"] };
+Object.assign(VERDICT, ML_STATUS);
+const GATE_AR = { trades: "صفقات قليلة", netSR: "Sharpe بعد التكاليف منخفض", PF: "Profit factor منخفض",
+  DSR: "لا يصمد أمام كثرة التجارب (DSR)", stability: "غير ثابت عبر السنوات", edge_over_null: "لا يتفوق على الضوضاء",
+  stressSR: "ينهار بتكاليف ×1.5" };
+function viewML() {
+  const X = D.ml;
+  if (!X) return [h("div", { class: "empty" }, "لم يُشغَّل ml-lab بعد. ابدأ بـ ml.sh build ثم ml.sh leakcheck.")];
+  S.mlSel = S.mlSel || (X.rows[0] && X.rows[0].id);
+  const vp = X.vault.filter(v => v.event === "VAULT_PASS").length;
+  const active = X.paper.filter(p => p.status === "PAPER_ACTIVE").length;
+  const tiles = h("div", { class: "tiles" },
+    tile("نماذج مدرّبة (إجمالي)", N(int(X.lifetime)), "كل تدريب يرفع عتبة DSR للتالي"),
+    tile("مرشّحة بانتظار الخزنة", N(String(X.pending.length)), X.pending.length ? "تحتاج موافقتك" : "لا شيء معلّق"),
+    tile("اجتازت الخزنة", N(`${vp}/${X.vault.length}`), "من النماذج التي فُتحت لها الخزنة"),
+    tile("Paper ظلّي نشط", N(String(active)), "بلا وسيط ولا حساب"),
+    tile("شهادة التسرّب", X.cert ? pill(X.cert.status === "PASS" ? "PASS" : "WEAK") : "—",
+      X.cert ? h("span", {}, "نسخة ", N(X.cert.version), X.cert.leaky_columns.length ? ` · ${X.cert.leaky_columns.length} خاصية مستبعدة` : "") : "شغّل ml.sh leakcheck"));
+  const gates = card("لماذا تُرفض النماذج؟", "عدد مرات فشل كل بوابة. الرفض هو النتيجة المتوقعة لمعظم الأفكار.",
+    table([{ label: "البوابة", get: g => GATE_AR[g[0]] || g[0] }, { label: "مرات الفشل", n: 1, get: g => int(g[1]) }], Object.entries(X.gates)));
+  const pend = card("مرشّحة بانتظار موافقتك", "للموافقة اكتب لـ Hermes: «أوافق على اختبار الخزنة لـ [المعرّف]». الخزنة مشتركة مع البحث، وكل فتح يُحسب على الاثنين.",
+    table([{ label: "المعرّف", get: r => h("span", { class: "mono", style: "font-size:12px" }, r.id) },
+      { label: "Sharpe", n: 1, get: r => num(r.net_sharpe) }, { label: "DSR", n: 1, get: r => num(r.dsr, 3) },
+      { label: "فوق الضوضاء", n: 1, get: r => num(r.edge_over_null) }, { label: "صفقات", n: 1, get: r => int(r.net_trades) }], X.pending));
+  const sel = X.rows.find(r => r.id === S.mlSel);
+  const list = card("كل التدريبات", "اضغط صفًا لعرض التفاصيل. النتائج خارج العينة (walk-forward) وبعد التكاليف.",
+    table([{ label: "الزوج", get: r => N(r.pair) }, { label: "الحكم", get: r => pill(r.status) },
+      { label: "صفقات", n: 1, get: r => int(r.net_trades) }, { label: "Sharpe", n: 1, get: r => num(r.net_sharpe) },
+      { label: "PF", n: 1, get: r => num(r.net_profit_factor) }, { label: "DSR", n: 1, get: r => num(r.dsr, 3) },
+      { label: "الضوضاء", n: 1, get: r => num(r.null_sharpe) }, { label: "الثبات", n: 1, get: r => num((r.stability ?? 0) * 100, 0) + "%" },
+      { label: "التاريخ", get: r => N(fmtDate(r.ts)) }], X.rows, { onRow: r => { S.mlSel = r.id; render(); } }));
+  const detail = sel ? card(sel.pair + " — " + (sel.status === "CANDIDATE" ? "مرشّح" : "مرفوض"), sel.why,
+    h("div", { class: "mono", style: "font-size:11px;color:var(--muted);margin-bottom:8px" }, sel.id),
+    sel.equity && sel.equity.length ? equityChart(sel.equity) : h("div", { class: "empty" }, "لا منحنى محفوظ لهذا التدريب."),
+    h("div", { class: "grid g2" },
+      table([{ label: "السنة", get: y => N(y[0]) }, { label: "العائد", n: 1, get: y => pct(y[1]) }], Object.entries(sel.by_year_pct || {})),
+      table([{ label: "أهم الخصائص", get: f => h("span", { class: "mono", style: "font-size:12px" }, f[0]) }, { label: "الأهمية", n: 1, get: f => int(f[1]) }], Object.entries(sel.top_features || {}).slice(0, 10))),
+    sel.fails ? h("p", { class: "sub" }, "أسباب الرفض: ", sel.fails.split(",").map(f => GATE_AR[f.split("=")[0]] || f).join(" · ")) : null) : null;
+  const vault = card("سجل خزنة ML", null, table([{ label: "النموذج", get: r => h("span", { class: "mono", style: "font-size:12px" }, r.id) },
+    { label: "النتيجة", get: r => pill(r.event) }, { label: "Sharpe", n: 1, get: r => num(r.net_sharpe) }, { label: "PF", n: 1, get: r => num(r.net_profit_factor) },
+    { label: "أقصى تراجع", n: 1, get: r => pct(r.net_max_dd_pct) }, { label: "صفقات", n: 1, get: r => int(r.net_trades) }, { label: "الموافق", get: r => r.approved_by }], X.vault));
+  const paper = card("Paper trading الظلّي", "يُقيَّم كل يوم على شموع لم يرها النموذج قط. لا وسيط ولا أوامر. التوقف تلقائي عند كسر شروط الخطة.",
+    table([{ label: "النموذج", get: p => h("span", { class: "mono", style: "font-size:12px" }, p.id) }, { label: "الحالة", get: p => pill(p.status) },
+      { label: "صفقات", n: 1, get: p => int(p.ledger?.net_trades) }, { label: "PF", n: 1, get: p => num(p.ledger?.net_profit_factor) },
+      { label: "تراجع", n: 1, get: p => pct(p.ledger?.net_max_dd_pct) }, { label: "انحراف PSI", n: 1, get: p => num(p.drift?.mean_psi, 3) },
+      { label: "تنبيه", get: p => p.alert ? h("b", {}, p.alert) : p.retrain_suggested ? h("span", { style: "white-space:nowrap", title: Object.keys(p.drift?.drifted || {}).join("، ") }, "انحراف ↻") : "—" }], X.paper));
+  return [tiles, h("div", { class: "grid g2" }, pend, gates), list, detail, h("div", { class: "grid g2" }, vault, paper)];
+}
+
 function render() {
   const app = $("#app");
   try { localStorage.setItem("lab.tab", S.tab); } catch (e) {}
   document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === S.tab)));
-  const views = { overview: viewOverview, lab: viewLab, upload: viewUpload, research: viewResearch, imports: viewImports, data: viewData };
+  const views = { overview: viewOverview, lab: viewLab, upload: viewUpload, research: viewResearch, imports: viewImports, data: viewData, ml: viewML };
   const kids = [];
   if (D.sample) kids.push(h("div", { class: "sample" }, "بيانات تجريبية مولّدة لعرض التصميم، وليست نتائج أسواق حقيقية. تُستبدل تلقائيًا بعد أول تشغيل على السيرفر."));
   kids.push(...(views[S.tab] || viewOverview)().filter(Boolean));
