@@ -161,8 +161,9 @@ def main() -> int:
             print(f"skip {mid}: identical config already trained → status {prev[-1]['status']}")
             continue
         X, L = dataset(pair, a.tf, lcfg, vs, excluded)
-        if len(X) < 20000:
-            print(f"skip {pair}: only {len(X)} research rows"); continue
+        min_rows = 20000 if a.tf == "h1" else 1500
+        if len(X) < min_rows:
+            print(f"skip {pair}: only {len(X)} research rows (min {min_rows} for tf {a.tf})"); continue
         R = run_wf(X, L, L["label"], a.quantile, a.meta == "on", a.min_train_years, a.stride)
         N = run_wf(X, L, block_shuffle(L["label"]), a.quantile, False, a.min_train_years, a.stride)
         if R is None:
