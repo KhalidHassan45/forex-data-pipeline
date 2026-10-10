@@ -38,7 +38,7 @@ def walk_forward(idx: pd.DatetimeIndex, t1: pd.Series, min_train_years=3, embarg
         start = pd.Timestamp(year=y, month=1, day=1, tz="UTC")
         end = pd.Timestamp(year=y + 1, month=1, day=1, tz="UTC")
         te = (idx >= start) & (idx < end)
-        if te.sum() < 500:
+        if te.sum() < 200:      # ~1 trading year on d1 (~250 bars); h1 has ~6000/yr so unaffected
             continue
         tr = (idx < start) & (t1v < start)        # purge: a training label may not end inside the test year
         tr &= idx < start - embargo
